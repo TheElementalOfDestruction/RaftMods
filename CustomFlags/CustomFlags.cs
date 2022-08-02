@@ -119,10 +119,16 @@ namespace DestinyCustomFlags
         public void OnModUnload()
         {
             this.harmony.UnpatchAll("com.destruction.CustomFlags");
-            this.assetBundle.Unload();
+            this.bundle.Unload(true);
             Destroy(this.prefabHolder?.gameObject);
-            Destroy(this.menu?);
-            Destroy(this.menuAsset?);
+            if (CustomFlags.menu)
+            {
+                Destroy(CustomFlags.menu);
+            }
+            if (CustomFlags.menuAsset)
+            {
+                Destroy(CustomFlags.menuAsset);
+            }
             CustomFlags.Log("Mod has been unloaded.");
         }
 
@@ -236,6 +242,9 @@ namespace DestinyCustomFlags
             customFlag.settings_usable = originalItem.settings_usable.Clone();
 
             Block[] blocks = customFlag.settings_buildable.GetBlockPrefabs().Clone() as Block[];
+
+            // Set the block to not be paintable.
+            Traverse.Create(customFlag.settings_buildable).Field("primaryPaintAxis").SetValue(Axis.None);
 
             // Setup the recipe.
             customFlag.SetRecipe(new[]
