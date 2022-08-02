@@ -1,0 +1,152 @@
+{
+  "name": "Configurable Machines",
+  "author": "Destruction",
+  "description": "Allows for configuring values of machines.",
+  "version": "0.3.0",
+  "license": "GNU AGPLv3",
+  "icon": "",
+  "banner": "",
+  "gameVersion": "1.0",
+  "updateUrl": "https://www.raftmodding.com/api/v1/mods/configmachines/version.txt",
+  "isModPermanent": false,
+  "excludedFiles": [],
+  "modSettings": [
+    {
+      "type": "slider",
+      "name": "advancedGrillMultiplier",
+      "text": "Advanced Grill Time Multiplier",
+      "default": 1,
+      "range": {
+        "type": "percent",
+        "min": 0.01,
+        "max": 2.5,
+        "decimals": 0
+      }
+    },
+    {
+      "type": "slider",
+      "name": "advancedPurifierMultiplier",
+      "text": "Advanced Purifier Time Multiplier",
+      "default": 1,
+      "range": {
+        "type": "percent",
+        "min": 0.01,
+        "max": 2.5,
+        "decimals": 0
+      }
+    },
+    {
+      "type": "slider",
+      "name": "basicGrillMultiplier",
+      "text": "Basic Grill Time Multiplier",
+      "default": 1,
+      "range": {
+        "type": "percent",
+        "min": 0.01,
+        "max": 2.5,
+        "decimals": 0
+      }
+    },    {
+      "type": "slider",
+      "name": "basicPurifierMultiplier",
+      "text": "Basic Purifier Time Multiplier",
+      "default": 1,
+      "range": {
+        "type": "percent",
+        "min": 0.01,
+        "max": 2.5,
+        "decimals": 0
+      }
+    },
+    {
+      "type": "slider",
+      "name": "basicSmelterMultiplier",
+      "text": "Basic Smelter Time Multiplier",
+      "default": 1,
+      "range": {
+        "type": "percent",
+        "min": 0.01,
+        "max": 2.5,
+        "decimals": 0
+      }
+    },
+    {
+      "type": "slider",
+      "name": "electricGrillMultiplier",
+      "text": "Electric Grill Time Multiplier",
+      "default": 1,
+      "range": {
+        "type": "percent",
+        "min": 0.01,
+        "max": 2.5,
+        "decimals": 0
+      }
+    },
+    {
+      "type": "slider",
+      "name": "elecPurifBatteryDrain",
+      "text": "Electric Purifier Battery Consumption Multiplier",
+      "default": 1,
+      "range": {
+        "type": "percent",
+        "min": 0,
+        "max": 2.5,
+        "decimals": 0
+      }
+    },
+    {
+      "type": "slider",
+      "name": "elecPurifTankFill",
+      "text": "Electric Purifier Tank Fill Multiplier",
+      "default": 1,
+      "range": {
+        "type": "number",
+        "min": 0.1,
+        "max": 10,
+        "decimals": 1
+      }
+    },
+    {
+      "type": "slider",
+      "name": "electricSmelterMultiplier",
+      "text": "Electric Smelter Time Multiplier",
+      "default": 1,
+      "range": {
+        "type": "percent",
+        "min": 0.01,
+        "max": 2.5,
+        "decimals": 0
+      }
+    },
+    {
+      "type": "checkbox",
+      "name": "engineDontUseFuel",
+      "text": "Engines Don't Use Fuel",
+      "default": false,
+    },
+    {
+      "type": "slider",
+      "name": "engineTimePerFuelMult",
+      "text": "Engine Time Per Fuel Multiplier",
+      "default": 1,
+      "range": {
+        "type": "percent",
+        "min": 0.5,
+        "max": 5,
+        "decimals": 0
+      }
+    },
+    {
+      "type": "slider",
+      "name": "paintMillMultiplier",
+      "text": "Paint Mill Time Multiplier",
+      "default": 1,
+      "range": {
+        "type": "percent",
+        "min": 0.01,
+        "max": 2.5,
+        "decimals": 0
+      }
+    }
+  ]
+}

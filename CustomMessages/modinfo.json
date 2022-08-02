@@ -1,0 +1,20 @@
+{
+  "name": "Custom Homepage Messages",
+  "author": "Destruction",
+  "description": "Customize the messages on the home page.",
+  "version": "1.0.0",
+  "license": "GNU AGPLv3",
+  "icon": "icon.png",
+  "banner": "banner.png",
+  "gameVersion": "1.0",
+  "updateUrl": "https://www.raftmodding.com/api/v1/mods/custommessages/version.txt",
+  "isModPermanent": false,
+  "excludedFiles": [],
+  "modSettings": [
+    {
+      "type": "button",
+      "name": "reloadList",
+      "text": "Reload Message List"
+    }
+  ]
+}

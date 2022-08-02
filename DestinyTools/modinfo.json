@@ -1,0 +1,13 @@
+{
+  "name": "Destiny Tools",
+  "author": "Destruction",
+  "description": "A collection of useful commands created by Destiny.",
+  "version": "1.2.1",
+  "license": "",
+  "icon": "",
+  "banner": "",
+  "gameVersion": "1.0",
+  "updateUrl": "https://www.raftmodding.com/api/v1/mods/destinytools/version.txt",
+  "isModPermanent": false,
+  "excludedFiles": []
+}

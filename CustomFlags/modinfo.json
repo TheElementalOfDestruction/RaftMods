@@ -1,0 +1,21 @@
+{
+  "name": "Custom Flags",
+  "author": "Destruction",
+  "description": "Adds a new block which is a customizable flag.",
+  "version": "1.0.0",
+  "license": "GNU AGPLv3",
+  "icon": "",
+  "banner": "",
+  "gameVersion": "1.0",
+  "updateUrl": "https://www.raftmodding.com/api/v1/mods/customflags/version.txt",
+  "isModPermanent": true,
+  "excludedFiles": [],
+  "modSettings": [
+    {
+      "type": "checkbox",
+      "name": "ignoreFlagMessages",
+      "text": "Disable Multiplayer Flags",
+      "default": true
+    }
+  ]
+}

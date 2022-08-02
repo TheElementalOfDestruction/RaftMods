@@ -1,0 +1,13 @@
+{
+  "name": "No Rudder",
+  "author": "Destruction",
+  "description": "Stops the rudder from generating with the steering wheel. No more pesky pipes.",
+  "version": "1.0.1",
+  "license": "",
+  "icon": "",
+  "banner": "",
+  "gameVersion": "1.0",
+  "updateUrl": "https://www.raftmodding.com/api/v1/mods/norudder/version.txt",
+  "isModPermanent": false,
+  "excludedFiles": []
+}
