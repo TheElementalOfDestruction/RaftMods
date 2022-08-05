@@ -1,21 +1,39 @@
 {
-  "name": "Custom Flags",
-  "author": "Destruction",
-  "description": "Adds a customizable flag.",
-  "version": "1.0.0",
-  "license": "GNU AGPLv3",
-  "icon": "icon.png",
-  "banner": "banner.png",
-  "gameVersion": "1.0",
-  "updateUrl": "https://www.raftmodding.com/api/v1/mods/customflags/version.txt",
-  "isModPermanent": true,
-  "excludedFiles": [],
-  "modSettings": [
-    {
-      "type": "checkbox",
-      "name": "ignoreFlagMessages",
-      "text": "Disable Multiplayer Flags",
-      "default": true
-    }
-  ]
+    "name": "Custom Flags",
+    "author": "Destruction",
+    "description": "Adds several customizable blocks.",
+    "version": "1.1.0",
+    "license": "GNU AGPLv3",
+    "icon": "general_assets/icon.png",
+    "banner": "general_assets/banner.png",
+    "gameVersion": "1.0",
+    "updateUrl": "https://www.raftmodding.com/api/v1/mods/customflags/version.txt",
+    "isModPermanent": false,
+    "excludedFiles": [],
+    "modSettings": [
+        {
+            "type": "keybind",
+            "name": "interactKey",
+            "text": "Menu Key",
+            "mainDefault": "F"
+        },
+        {
+            "type": "checkbox",
+            "name": "ignoreFlagMessages",
+            "text": "Disable Multiplayer Flags",
+            "default": true
+        },
+        {
+            "type": "checkbox",
+            "name": "editorEnabled",
+            "text": "Enable Image Selector",
+            "default": true
+        },
+        {
+            "type": "checkbox",
+            "name": "preventChanges",
+            "text": "Prevent Other Users From Editing Flags",
+            "default": true
+        }
+    ]
 }

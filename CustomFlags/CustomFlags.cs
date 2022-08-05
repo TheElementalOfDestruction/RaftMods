@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
@@ -16,27 +17,45 @@ namespace DestinyCustomFlags
 {
     public class CustomFlags : Mod
     {
+        //TODO: Raycast combine for sail;
+
         private const int FLAG_ID = 478;
+        private const int SAIL_ID = 126;
 
         // In little endian this would represent the string "De";
-        public static int CUSTOM_FLAG_ITEM_ID = 25924;
+        public static readonly int CUSTOM_FLAG_ITEM_ID = 25924;
+        public static readonly int CUSTOM_SAIL_ITEM_ID = 25925;
+        public static readonly int CUSTOM_BLOCK_ID_MIN = CUSTOM_FLAG_ITEM_ID;
+        public static readonly int CUSTOM_BLOCK_ID_MAX = CUSTOM_SAIL_ITEM_ID;
+        public static readonly Dictionary<BlockType, (int, int)> LOCATIONS = new Dictionary<BlockType, (int, int)>()
+        {
+            { BlockType.FLAG, (253, 768) },
+            { BlockType.SAIL, (4, 132) },
+        };
+        public static readonly Dictionary<BlockType, (int, int)> SIZES = new Dictionary<BlockType, (int, int)>()
+        {
+            { BlockType.FLAG, (381, 256) },
+            { BlockType.SAIL, (792, 674) },
+        };
+
         public static CustomFlags instance;
         public static JsonModInfo modInfo;
 
-        private static ValueTuple<int, int> FLAG_LOCATION = (253, 768);
-        private static Block_CustomFlag currentFlag;
         private static GameObject menu;
         private static GameObject menuAsset;
         private static CustomFlagsMenu cfMenu;
 
-        public Texture2D baseFlagTexture;
-        public Texture2D baseFlagNormal;
-        public Texture2D baseFlagPaint;
-        public Material defaultFlag;
-        public Sprite defaultFlagSprite;
+        // Dictionaries for storing the data for new materials.
+        public Dictionary<BlockType, Texture2D> baseTextures;
+        public Dictionary<BlockType, Texture2D> baseNormals;
+        public Dictionary<BlockType, Texture2D> basePaints;
+        // Dictionary for the default materials.
+        public Dictionary<BlockType, Material> defaultMaterials;
+        // Dictionary for the default sprites.
+        public Dictionary<BlockType, Sprite> defaultSprites;
 
         private Shader shader;
-        private Item_Base customFlagItem;
+        private Item_Base[] customItems;
         private Harmony harmony;
         private Transform prefabHolder;
         private AssetBundle bundle;
@@ -45,7 +64,31 @@ namespace DestinyCustomFlags
         {
             get
             {
-                return instance.ExtraSettingsAPI_GetCheckboxState("ignoreFlagMessages");
+                return CustomFlags.instance.ExtraSettingsAPI_GetCheckboxState("ignoreFlagMessages");
+            }
+        }
+
+        public static KeyCode InteractKey
+        {
+            get
+            {
+                return CustomFlags.instance.ExtraSettingsAPI_GetKeybindMain("interactKey");
+            }
+        }
+
+        public static bool EditorEnabled
+        {
+            get
+            {
+                return CustomFlags.instance.ExtraSettingsAPI_GetCheckboxState("editorEnabled");
+            }
+        }
+
+        public static bool PreventChanges
+        {
+            get
+            {
+                return CustomFlags.instance.ExtraSettingsAPI_GetCheckboxState("preventChanges");
             }
         }
 
@@ -55,7 +98,11 @@ namespace DestinyCustomFlags
         public IEnumerator Start()
         {
             CustomFlags.instance = this;
-
+            this.baseTextures = new Dictionary<BlockType, Texture2D>();
+            this.baseNormals = new Dictionary<BlockType, Texture2D>();
+            this.basePaints = new Dictionary<BlockType, Texture2D>();
+            this.defaultMaterials = new Dictionary<BlockType, Material>();
+            this.defaultSprites = new Dictionary<BlockType, Sprite>();
             HNotification notification = HNotify.instance.AddNotification(HNotify.NotificationType.spinning, "Loading CustomFlags...");
 
             CustomFlags.modInfo = modlistEntry.jsonmodinfo;
@@ -68,40 +115,30 @@ namespace DestinyCustomFlags
             // First thing is first, let's fetch our shader from the game.
             this.shader = Shader.Find(" BlockPaint");
 
-            // Now since we need this for every flag, get the base texture for
-            // flags.
+            // Second, setup the data for each block. First is the flag.
             var originalMat = ItemManager.GetItemByIndex(FLAG_ID).settings_buildable.GetBlockPrefab(DPS.Floor).GetComponent<OccupyingComponent>().renderers[1].material;
-            this.baseFlagTexture = (originalMat.GetTexture("_Diffuse") as Texture2D).CreateReadable();
-            Texture2D flagTexture = new Texture2D(381, 256);
-            ImageConversion.LoadImage(flagTexture, GetEmbeddedFileBytes("transparent_flag.png"));
-            CustomFlags.PlaceFlagInTexture(this.baseFlagTexture, flagTexture);
-
-            // Now we need to generate our paint map.
-            this.baseFlagPaint = (originalMat.GetTexture("_MetallicRPaintMaskGSmoothnessA") as Texture2D).CreateReadable();
-            // We already have the transparent flag loaded, so just use it.
-            CustomFlags.PlaceFlagInTexture(this.baseFlagPaint, flagTexture);
-
-            // Now we need to generate our normal map.
-            this.baseFlagNormal = (originalMat.GetTexture("_Normal") as Texture2D).CreateReadable();
-            ImageConversion.LoadImage(flagTexture, GetEmbeddedFileBytes("normal.png"));
-            CustomFlags.PlaceFlagInTexture(this.baseFlagNormal, flagTexture);
+            this.AddBaseTextures(BlockType.FLAG, originalMat, "flag/transparent.png", "flag/normal.png", "flag/transparent.png");
+            // Setup the data for the sail.
+            originalMat = ItemManager.GetItemByIndex(SAIL_ID).settings_buildable.GetBlockPrefab(DPS.Floor).GetComponentInChildren<MeshRenderer>().material;
+            this.AddBaseTextures(BlockType.SAIL, originalMat, "sail/transparent.png", "sail/normal.png", "sail/transparent.png");
 
             // Create our default flag material.
-            this.defaultFlag = this.PrepareMaterial();
-            flagTexture = new Texture2D(381, 256);
-            ImageConversion.LoadImage(flagTexture, GetEmbeddedFileBytes("default.png"));
-            CustomFlags.PlaceFlagInMaterial(this.defaultFlag, flagTexture);
-
+            this.defaultMaterials[BlockType.FLAG] = CustomFlags.CreateMaterialFromImageData(GetEmbeddedFileBytes("flag/default.png").SanitizeImage(BlockType.FLAG), BlockType.FLAG);
+            this.defaultMaterials[BlockType.SAIL] = CustomFlags.CreateMaterialFromImageData(GetEmbeddedFileBytes("sail/default.png").SanitizeImage(BlockType.SAIL), BlockType.SAIL);
             // Create the custom flag item base.
-            this.customFlagItem = this.CreateCustomFlagItem();
+            this.customItems = new Item_Base[] {
+                this.CreateCustomFlagItem(),
+                this.CreateCustomSailItem(),
+            };
 
-            RAPI.RegisterItem(this.customFlagItem);
+            Array.ForEach(this.customItems, x => RAPI.RegisterItem(x));
 
             // Create the default flag sprite for the menu.
-            this.defaultFlagSprite = CustomFlags.CreateFlagSpriteFromBytes(GetEmbeddedFileBytes("default.png"));
+            this.defaultSprites[BlockType.FLAG] = CustomFlags.CreateSpriteFromBytes(GetEmbeddedFileBytes("flag/default.png").SanitizeImage(BlockType.FLAG), BlockType.FLAG);
+            this.defaultSprites[BlockType.SAIL] = CustomFlags.CreateSpriteFromBytes(GetEmbeddedFileBytes("sail/default.png").SanitizeImage(BlockType.SAIL), BlockType.SAIL);
 
             // Now, load the menu from the asset bundle.
-            var bundleLoadRequest = AssetBundle.LoadFromMemoryAsync(GetEmbeddedFileBytes("customflags.assets"));
+            var bundleLoadRequest = AssetBundle.LoadFromMemoryAsync(GetEmbeddedFileBytes("general_assets/customflags.assets"));
             yield return bundleLoadRequest;
             this.bundle = bundleLoadRequest.assetBundle;
 
@@ -118,8 +155,8 @@ namespace DestinyCustomFlags
 
         public void OnModUnload()
         {
-            this.harmony.UnpatchAll("com.destruction.CustomFlags");
-            this.bundle.Unload(true);
+            this.harmony?.UnpatchAll("com.destruction.CustomFlags");
+            this.bundle?.Unload(true);
             Destroy(this.prefabHolder?.gameObject);
             if (CustomFlags.menu)
             {
@@ -142,30 +179,59 @@ namespace DestinyCustomFlags
             Debug.Log($"[{modInfo.name}][DEBUG]: {message}");
         }
 
-        public static void OpenCustomFlagsMenu(Block_CustomFlag cf)
+        public static void OpenCustomFlagsMenu(Block_CustomBlock_Base cf)
         {
             CustomFlags.cfMenu.ShowMenu(cf);
+        }
+
+        /*
+         * Creates the base texture, normal, and paint Texture2Ds for a
+         * specified block type using original material and the internal files
+         * specified. Then, adds them to the dictionary.
+         */
+        private void AddBaseTextures(BlockType bt, Material originalMat, string texture, string normal, string paint)
+        {
+            Texture2D insertTex = new Texture2D(SIZES[bt].Item1, SIZES[bt].Item2);
+
+            Texture2D[] add = new Texture2D[3];
+
+            // Get the diffuse portion of the texture.
+            add[0] = (originalMat.GetTexture("_Diffuse") as Texture2D).CreateReadable();
+            ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(texture));
+            CustomFlags.PlaceImageInTexture(add[0], insertTex, bt);
+
+            // Now we need to generate our normal map.
+            add[1] = (originalMat.GetTexture("_Normal") as Texture2D).CreateReadable();
+            ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(normal));
+            CustomFlags.PlaceImageInTexture(add[1], insertTex, bt);
+
+            // Now we need to generate our paint map.
+            add[2] = (originalMat.GetTexture("_MetallicRPaintMaskGSmoothnessA") as Texture2D).CreateReadable();
+            ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(paint));
+            CustomFlags.PlaceImageInTexture(add[2], insertTex, bt);
+
+            this.baseTextures[bt] = add[0];
+            this.baseNormals[bt] = add[1];
+            this.basePaints[bt] = add[2];
         }
 
         /*
          * Returns a new material with the flag data inside of it. Returns null
          * if the data is bad.
          */
-        public static Material CreateMaterialFromImageData(byte[] flagData)
+        public static Material CreateMaterialFromImageData(byte[] data, BlockType bt)
         {
-            // Copy instance to local variable.
-            CustomFlags inst = CustomFlags.instance;
-
             // Load the data into a texture.
-            Texture2D flagTex = new Texture2D(381, 256);
-            if (!ImageConversion.LoadImage(flagTex, flagData))
+            Texture2D tex = data.ToTexture2D(SIZES[bt].Item1, SIZES[bt].Item2);
+            if (!tex)
             {
+                Debug.Log("Could not create material from image data: data failed to convert.");
                 return null;
             }
 
             // Create the material and put the flag inside of it.
-            Material mat = inst.PrepareMaterial();
-            CustomFlags.PlaceFlagInMaterial(mat, flagTex);
+            Material mat = CustomFlags.instance.PrepareMaterial(bt);
+            CustomFlags.PlaceImageInMaterial(mat, tex, bt);
 
             // Return it.
             return mat;
@@ -175,7 +241,7 @@ namespace DestinyCustomFlags
          * Uses the data to create a flag sprite. Returns null if flag is bad.
          * Returns the default flag texture if the data is 0 bytes.
          */
-        public static Sprite CreateFlagSpriteFromBytes(byte[] data)
+        public static Sprite CreateSpriteFromBytes(byte[] data, BlockType bt)
         {
             if (data == null)
             {
@@ -183,36 +249,33 @@ namespace DestinyCustomFlags
             }
             if (data.Length == 0)
             {
-                return CustomFlags.instance.defaultFlagSprite;
+                return CustomFlags.instance.defaultSprites[bt];
             }
 
             Vector2 pivot = new Vector2(0.5f, 0.5f);
-            Rect rect = new Rect(0, 0, 381, 256);
+            Rect rect = new Rect(0, 0, 1524, 1024);
 
-            Texture2D flag = new Texture2D(381, 256);
-            Texture2D flagData = new Texture2D(1, 1);
-            if (!ImageConversion.LoadImage(flagData, data))
-            {
-                return null;
-            }
-            flag.Edit(flagData, 0, 0, 381, 256);
+            Texture2D container = new Texture2D(1524, 1024);
+            Texture2D imageTex = data.ToTexture2D(SIZES[bt].Item1, SIZES[bt].Item2);
+            (int, int, int, int) newSize = CustomFlags.ScaleToFit(SIZES[bt].Item1, SIZES[bt].Item2, 1524, 1024);
+            container.Edit(imageTex, newSize.Item1, newSize.Item2, newSize.Item3, newSize.Item4);
 
-            return Sprite.Create(flag, rect, pivot);
+            return Sprite.Create(container, rect, pivot);
         }
 
         /*
          * Prepares a new material for flags to be placed into.
          */
-        private Material PrepareMaterial()
+        private Material PrepareMaterial(BlockType bt)
         {
             // Load the textures.
             Texture2D diffuse = new Texture2D(1024, 1024);
             Texture2D paint = new Texture2D(1024, 1024);
             Texture2D normal = new Texture2D(1024, 1024);
 
-            Graphics.CopyTexture(this.baseFlagTexture, diffuse);
-            Graphics.CopyTexture(this.baseFlagNormal, normal);
-            Graphics.CopyTexture(this.baseFlagPaint, paint);
+            Graphics.CopyTexture(this.baseTextures[bt], diffuse);
+            Graphics.CopyTexture(this.baseNormals[bt], normal);
+            Graphics.CopyTexture(this.basePaints[bt], paint);
 
             // Create and setup our material.
             Material mat = new Material(this.shader);
@@ -309,7 +372,7 @@ namespace DestinyCustomFlags
                     c.isTrigger = true;
                     c.enabled = true;
                     c.gameObject.layer = 10;
-                    cf.networkedBehaviour = cf.gameObject.AddComponent<CF_Network>();
+                    cf.networkedBehaviour = cf.gameObject.AddComponent<CustomBlock_Network>();
                     cf.networkType = NetworkType.NetworkBehaviour;
 
                     cf.ImageData = new byte[0];
@@ -326,73 +389,160 @@ namespace DestinyCustomFlags
         }
 
         /*
-         * Overwrites the data in the specified area with the specified flag
-         * texture. Returns true if success, false if the texture was the wrong
-         * size. This simplifies the calls to work with a material instead of a
-         * Texture2D for the destination.
-         *
-         * :param dest: The texture for the flags to go into.
-         * :param flag: The flag texture to add.
+         * Finds the base sail item and uses it to create a new custom sail
+         * item.
          */
-        private static void PlaceFlagInMaterial(Material dest, Texture2D flag)
+        private Item_Base CreateCustomSailItem()
         {
-            CustomFlags.PlaceFlagInTexture(dest.GetTexture("_Diffuse") as Texture2D, flag);
+            // Create a clone of the regular flag.
+            Item_Base originalItem = ItemManager.GetItemByIndex(SAIL_ID);
+            Item_Base customSail = ScriptableObject.CreateInstance<Item_Base>();
+            customSail.Initialize(CUSTOM_SAIL_ITEM_ID, "destiny_CustomSail", 1);
+            customSail.settings_buildable = originalItem.settings_buildable.Clone();
+            customSail.settings_consumeable = originalItem.settings_consumeable.Clone();
+            customSail.settings_cookable = originalItem.settings_cookable.Clone();
+            customSail.settings_equipment = originalItem.settings_equipment.Clone();
+            customSail.settings_Inventory = originalItem.settings_Inventory.Clone();
+            customSail.settings_recipe = originalItem.settings_recipe.Clone();
+            customSail.settings_usable = originalItem.settings_usable.Clone();
+
+            Block[] blocks = customSail.settings_buildable.GetBlockPrefabs().Clone() as Block[];
+
+            // Set the block to not be paintable.
+            Traverse.Create(customSail.settings_buildable).Field("primaryPaintAxis").SetValue(Axis.None);
+
+            // Setup the recipe.
+            customSail.SetRecipe(new[]
+                {
+                    new CostMultiple(new[] { ItemManager.GetItemByIndex(21) }, 4),
+                    new CostMultiple(new[] { ItemManager.GetItemByIndex(23) }, 2),
+                    new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 6)
+                }, CraftingCategory.Navigation, 1, false, "CustomSail", 1);
+            Traverse.Create(customSail.settings_recipe).Field("_hiddenInResearchTable").SetValue(false);
+
+            // Localization stuff.
+            customSail.settings_Inventory.LocalizationTerm = "Item/destiny_CustomSail";
+            var language = new LanguageSourceData()
+            {
+                mDictionary = new Dictionary<string, TermData>
+                {
+                    ["Item/destiny_CustomSail"] = new TermData() { Languages = new[] { "Custom Sail@A customizable sail." } },
+                    ["CraftingSub/CustomSail"] = new TermData() { Languages = new[] { "Custom Sail" } }
+                },
+                mLanguages = new List<LanguageData> { new LanguageData() { Code = "en", Name = "English" } }
+            };
+            LocalizationManager.Sources.Add(language);
+            Traverse.Create(typeof(LocalizationManager)).Field("OnLocalizeEvent").GetValue<LocalizationManager.OnLocalizeCallback>().Invoke();
+
+
+            // Now, we need to replace Block with Block_CustomSail;
+            for (int i = 0; i < blocks.Length; ++i)
+            {
+                if (blocks[i])
+                {
+                    // Based on some of Aidan's code.
+                    var sailPrefab = Instantiate(blocks[i], this.prefabHolder, false);
+                    sailPrefab.name = $"Block_CustomSail_{i}";
+                    var cs = sailPrefab.gameObject.AddComponent<Block_CustomSail>();
+                    cs.CopyFieldsOf(sailPrefab);
+                    cs.ReplaceValues(sailPrefab, cs);
+                    sailPrefab.ReplaceValues(originalItem, customSail);
+                    blocks[i] = cs;
+                    DestroyImmediate(sailPrefab);
+
+                    // Finally, we need to remove the Sail instance and add our
+                    // own class instead.
+                    var sail = cs.gameObject.AddComponent<CustomSail_Network>();
+                    sail.CopyFieldsOf(cs.GetComponent<Sail>());
+                    sail.ReplaceValues(cs.GetComponent<Sail>(), sail);
+                    DestroyImmediate(cs.GetComponent<Sail>());
+                    cs.networkedBehaviour = sail;
+
+                    cs.networkType = NetworkType.NetworkBehaviour;
+                    cs.ImageData = new byte[0];
+                }
+            }
+
+            Traverse.Create(customSail.settings_buildable).Field("blockPrefabs").SetValue(blocks);
+
+            foreach (var q in Resources.FindObjectsOfTypeAll<SO_BlockQuadType>())
+                if (q.AcceptsBlock(originalItem))
+                    Traverse.Create(q).Field("acceptableBlockTypes").GetValue<List<Item_Base>>().Add(customSail);
+
+            return customSail;
         }
 
         /*
-         * Overwrites the data in the specified area with the specified flag
-         * texture. Returns true if success, false if the texture was the wrong
-         * size.
+         * Overwrites the data in the specified area with the specified texture.
+         * This simplifies the calls to work with a material instead of a
+         * Texture2D for the destination.
+         *
+         * :param dest: The material for the image to go into.
+         * :param src: The source texture to add.
+         * :param bt: The type of block the texture is. This tells where to
+         *     place the texture and what size it will be.
+         */
+        private static void PlaceImageInMaterial(Material dest, Texture2D src, BlockType bt)
+        {
+            CustomFlags.PlaceImageInTexture(dest.GetTexture("_Diffuse") as Texture2D, src, bt);
+        }
+
+        /*
+         * Overwrites the data in the specified area with the specified texture.
          *
          * :param dest: The texture for the flags to go into.
-         * :param flag: The flag texture to add.
+         * :param src: The flag texture to add.
+         * :param bt: The type of block the texture is. This tells where to
+         *     place the texture and what size it will be.
          */
-        private static void PlaceFlagInTexture(Texture2D dest, Texture2D flag)
+        private static void PlaceImageInTexture(Texture2D dest, Texture2D src, BlockType bt)
         {
-            dest.Edit(flag, FLAG_LOCATION.Item1, FLAG_LOCATION.Item2, 381, 256);
+            dest.Edit(src, LOCATIONS[bt].Item1, LOCATIONS[bt].Item2, SIZES[bt].Item1, SIZES[bt].Item2);
+        }
+
+        /*
+         * Function to retun offset to place at as well as the new size for an
+         * image being placed in the specified box.
+         *
+         * :returns: 4 tuple of x offset, y offset, newWidth, newHeight.
+         */
+        public static (int, int, int, int) ScaleToFit(int srcWidth, int srcHeight, int destWidth, int destHeight)
+        {
+            double scaleW = destWidth / (double)srcWidth;
+            double scaleH = destHeight / (double)srcHeight;
+            double scaleRatio = Math.Min(scaleW, scaleH);
+            int newWidth = Math.Min(destWidth, (int)(scaleRatio * srcWidth));
+            int newHeight = Math.Min(destHeight, (int)(scaleRatio * srcHeight));
+            int xOffset = (destWidth - newWidth) / 2;
+            int yOffset = (destHeight - newHeight) / 2;
+
+
+            return (xOffset, yOffset, newWidth, newHeight);
         }
 
         public static T CreateObject<T>() => (T)FormatterServices.GetUninitializedObject(typeof(T));
         public bool ExtraSettingsAPI_GetCheckboxState(string name) => true;
-
-        [ConsoleCommand(name: "CustomFlagsDebug_ReplaceMaterial", docs: "Test to replace the material of all custom flags.")]
-        public static string ReplaceMaterials(string[] args)
-        {
-            string arg = string.Join(" ", args);
-
-            Texture2D tex = new Texture2D(1024, 1024);
-            ImageConversion.LoadImage(tex, System.IO.File.ReadAllBytes(args[0]));
-            Material mat = CustomFlags.instance.PrepareMaterial();
-            mat.SetTexture("_Diffuse", tex);
-
-            Array.ForEach(FindObjectsOfType<Block_CustomFlag>(), x => {
-                if (x.occupyingComponent)
-                {
-                    if (x.occupyingComponent.renderers.Length == 1)
-                    {
-                        x.occupyingComponent.renderers[0].material = mat;
-                    }
-                    else
-                    {
-                        x.occupyingComponent.renderers[1].material = mat;
-                    }
-                }
-            });
-
-            return "Replaced.";
-        }
+        public KeyCode ExtraSettingsAPI_GetKeybindMain(string SettingName) => KeyCode.None;
 
         public static void LogStack()
         {
             var trace = new System.Diagnostics.StackTrace();
+            var message = "";
             foreach (var frame in trace.GetFrames())
             {
                 var method = frame.GetMethod();
                 if (method.Name.Equals("LogStack")) continue;
-                Debug.Log(string.Format("{0}::{1}",
+                message += string.Format("{0}::{1}",
                     method.ReflectedType != null ? method.ReflectedType.Name : string.Empty,
-                    method.Name));
-          }
+                    method.Name) + "\n";
+            }
+            CustomFlags.DebugLog(message);
+        }
+
+        public enum BlockType
+        {
+            FLAG,
+            SAIL
         }
     }
 
@@ -401,8 +551,8 @@ namespace DestinyCustomFlags
     public class CustomFlagsMenu : MonoBehaviour
     {
         private CanvasGroup cg;
-        private UnityEngine.UI.Image flagPreview;
-        private Block_CustomFlag currentFlag;
+        private UnityEngine.UI.Image preview;
+        private Block_CustomBlock_Base currentBlock;
         private TMPro.TMP_InputField inputField;
         private byte[] imageData;
         private bool shown;
@@ -416,27 +566,27 @@ namespace DestinyCustomFlags
                 {
                     button.onClick.AddListener(this.HideMenu);
                 }
-                else if (button.gameObject.name.StartsWith("DefaultFlagButton"))
+                else if (button.gameObject.name.StartsWith("DefaultButton"))
                 {
-                    button.onClick.AddListener(this.SetFlagDefault);
+                    button.onClick.AddListener(this.SetBlockDefault);
                 }
                 else if (button.gameObject.name.StartsWith("LoadButton"))
                 {
-                    button.onClick.AddListener(this.LoadFlagPreviewStart);
+                    button.onClick.AddListener(this.LoadPreviewStart);
                 }
                 else if (button.gameObject.name.StartsWith("UpdateButton"))
                 {
-                    button.onClick.AddListener(this.UpdateFlag);
+                    button.onClick.AddListener(this.UpdateBlock);
                 }
             }
 
             // Get the components.
             this.cg = this.GetComponent<CanvasGroup>();
-            this.flagPreview = this.GetComponentsInChildren<UnityEngine.UI.Image>().First(x => x.gameObject.name.StartsWith("FlagPreview"));
+            this.preview = this.GetComponentsInChildren<UnityEngine.UI.Image>().First(x => x.gameObject.name.StartsWith("Preview"));
             this.inputField = this.GetComponentInChildren<TMPro.TMP_InputField>();
 
             // Setup the text entry.
-            this.inputField.onSubmit.AddListener(this.LoadFlagPreviewStartText);
+            this.inputField.onSubmit.AddListener(this.LoadPreviewStartText);
 
             this.HideMenu();
         }
@@ -461,7 +611,7 @@ namespace DestinyCustomFlags
 
         public void HideMenu()
         {
-            this.currentFlag = null;
+            this.currentBlock = null;
             this.cg.alpha = 0;
             this.cg.interactable = false;
             this.cg.blocksRaycasts = false;
@@ -469,7 +619,7 @@ namespace DestinyCustomFlags
             RAPI.ToggleCursor(false);
         }
 
-        public IEnumerator LoadFlagPreview()
+        public IEnumerator LoadPreview()
         {
             byte[] temp = null;
 
@@ -506,8 +656,8 @@ namespace DestinyCustomFlags
                 else
                 {
                     // Success!
-                    this.imageData = handler.data;
-                    this.flagPreview.overrideSprite = CustomFlags.CreateFlagSpriteFromBytes(handler.data);
+                    this.imageData = handler.data.SanitizeImage(this.currentBlock.CustomBlockType);
+                    this.preview.overrideSprite = CustomFlags.CreateSpriteFromBytes(this.imageData, this.currentBlock.CustomBlockType);
                 }
             }
             else
@@ -515,15 +665,16 @@ namespace DestinyCustomFlags
                 if (File.Exists(path))
                 {
                     temp = File.ReadAllBytes(path);
-                    Sprite s = CustomFlags.CreateFlagSpriteFromBytes(temp);
-                    if (temp.Length == 0 || s == null)
+                    byte[] temp2 = temp.Length > 0 ? temp.SanitizeImage(this.currentBlock.CustomBlockType) : temp;
+                    Sprite s = CustomFlags.CreateSpriteFromBytes(temp2, this.currentBlock.CustomBlockType);
+                    if (temp2.Length == 0 || s == null)
                     {
                         this.HandleError("File does not contain a valid flag. Valid flag must be a PNG or JPG file.");
                     }
                     else
                     {
-                        this.imageData = temp;
-                        this.flagPreview.overrideSprite = s;
+                        this.imageData = temp2;
+                        this.preview.overrideSprite = s;
                     }
                 }
                 else
@@ -533,25 +684,25 @@ namespace DestinyCustomFlags
             }
         }
 
-        public void LoadFlagPreviewStart()
+        public void LoadPreviewStart()
         {
-            StartCoroutine(this.LoadFlagPreview());
+            StartCoroutine(this.LoadPreview());
         }
 
-        public void LoadFlagPreviewStartText(string _ = "")
+        public void LoadPreviewStartText(string _ = "")
         {
-            StartCoroutine(this.LoadFlagPreview());
+            StartCoroutine(this.LoadPreview());
         }
 
-        public void SetFlagDefault()
+        public void SetBlockDefault()
         {
             this.imageData = new byte[0];
-            this.flagPreview.overrideSprite = CustomFlags.instance.defaultFlagSprite;
+            this.preview.overrideSprite = CustomFlags.instance.defaultSprites[this.currentBlock.CustomBlockType];
         }
 
-        public void ShowMenu(Block_CustomFlag cf)
+        public void ShowMenu(Block_CustomBlock_Base cb)
         {
-            if (cf == null)
+            if (cb == null)
             {
                 return;
             }
@@ -559,17 +710,17 @@ namespace DestinyCustomFlags
             this.cg.interactable = true;
             this.cg.blocksRaycasts = true;
             this.shown = true;
-            this.currentFlag = cf;
-            this.imageData = cf.ImageData;
-            this.flagPreview.overrideSprite = CustomFlags.CreateFlagSpriteFromBytes(this.imageData);
+            this.currentBlock = cb;
+            this.imageData = cb.ImageData;
+            this.preview.overrideSprite = CustomFlags.CreateSpriteFromBytes(this.imageData, cb.CustomBlockType);
             RAPI.ToggleCursor(true);
         }
 
-        public void UpdateFlag()
+        public void UpdateBlock()
         {
-            if (this.currentFlag)
+            if (this.currentBlock)
             {
-                this.currentFlag.ImageData = this.imageData;
+                this.currentBlock.ImageData = this.imageData;
             }
             this.HideMenu();
         }
@@ -584,31 +735,31 @@ namespace DestinyCustomFlags
     }
 
 
-    public class CF_Network : MonoBehaviour_Network
+    // Base class for custom block types' network behaviour.
+    public class CustomBlock_Network : MonoBehaviour_Network
     {
-        public void OnBlockPlaced()
+        public virtual void OnBlockPlaced()
         {
             NetworkIDManager.AddNetworkID(this);
         }
 
-        void OnDestroy()
+        protected override void OnDestroy()
         {
             NetworkIDManager.RemoveNetworkID(this);
+            base.OnDestroy();
         }
 
         public override bool Deserialize(Message_NetworkBehaviour msg, CSteamID remoteID)
         {
             var message = msg as Message_Animal_AnimTriggers;
-            if ((int)msg.Type == -75 && message != null && message.anim_triggers.Length == 3)
+            if ((int)msg.Type == -75 && message != null && message.anim_triggers.Length == 1)
             {
-                if (!CustomFlags.IgnoreFlagMessages)
+                if (!CustomFlags.IgnoreFlagMessages && !(Raft_Network.IsHost && CustomFlags.PreventChanges))
                 {
-                    int width = Int32.Parse(message.anim_triggers[1]);
-                    int height = Int32.Parse(message.anim_triggers[2]);
-                    byte[] data = Convert.FromBase64String(message.anim_triggers[0]).ToTexture2D(width, height)?.EncodeToPNG();
+                    byte[] data = Convert.FromBase64String(message.anim_triggers[0]);
                     if (data != null)
                     {
-                        this.GetComponent<Block_CustomFlag>().ImageData = data;
+                        this.GetComponent<Block_CustomBlock_Base>().ImageData = data;
                         return true;
                     }
                 }
@@ -620,25 +771,91 @@ namespace DestinyCustomFlags
             return base.Deserialize(msg, remoteID);
         }
 
-        public void BroadcastFlag(byte[] data)
+        public virtual void BroadcastChange(byte[] data)
         {
             if (LoadSceneManager.IsGameSceneLoaded && !CustomFlags.IgnoreFlagMessages)
             {
-                Texture2D tex = new Texture2D(1, 1);
-                ImageConversion.LoadImage(tex, data);
-                byte[] newData = data.SanitizeImage();
-                var msg = new Message_Animal_AnimTriggers((Messages)(-75), ComponentManager<Raft_Network>.Value.NetworkIDManager, this.ObjectIndex, new string[] { Convert.ToBase64String(newData), tex.width.ToString(), tex.height.ToString() });
+                var msg = new Message_Animal_AnimTriggers((Messages)(-75), ComponentManager<Raft_Network>.Value.NetworkIDManager, this.ObjectIndex, new string[] { Convert.ToBase64String(data) });
                 ComponentManager<Raft_Network>.Value.RPC(msg, Target.All, EP2PSend.k_EP2PSendReliable, (NetworkChannel)17732);
             }
         }
     }
 
-    // Class for handling how to display a custom flag.
-    public class Block_CustomFlag : Block, IRaycastable
+    public class CustomSail_Network : Sail, IRaycastable
     {
-        private byte[] imageData;
-        private bool rendererPatched = false;
-        private bool showingText;
+        public virtual void OnBlockPlaced()
+        {
+            // Need to access the lower sail OnBlockPlace, but it is private.
+            //Traverse.Create((Sail)this).Method("OnBlockPlaced").GetValue();
+            typeof(Sail).GetMethod("OnBlockPlaced", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(this, null);
+            NetworkIDManager.AddNetworkID(this);
+        }
+
+        protected override void OnDestroy()
+        {
+            NetworkIDManager.RemoveNetworkID(this);
+            base.OnDestroy();
+        }
+
+        /*void IRaycastable.OnIsRayed()
+        {
+            this.OnIsRayed();
+        }
+
+        void IRaycastable.OnRayEnter()
+        {
+            this.OnRayEnter();
+        }
+
+        void IRaycastable.OnRayExit()
+        {
+            this.OnRayExit();
+        }*/
+
+        public override RGD Serialize_Save()
+        {
+            // Override so that the block class handles the save.
+            return null;
+        }
+
+        public override bool Deserialize(Message_NetworkBehaviour msg, CSteamID remoteID)
+        {
+            var message = msg as Message_Animal_AnimTriggers;
+            if ((int)msg.Type == -75 && message != null && message.anim_triggers.Length == 1)
+            {
+                if (!CustomFlags.IgnoreFlagMessages)
+                {
+                    byte[] data = Convert.FromBase64String(message.anim_triggers[0]);
+                    if (data != null)
+                    {
+                        this.GetComponent<Block_CustomBlock_Base>().ImageData = data;
+                        return true;
+                    }
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            return base.Deserialize(msg, remoteID);
+        }
+
+        public virtual void BroadcastChange(byte[] data)
+        {
+            if (LoadSceneManager.IsGameSceneLoaded && !CustomFlags.IgnoreFlagMessages)
+            {
+                var msg = new Message_Animal_AnimTriggers((Messages)(-75), ComponentManager<Raft_Network>.Value.NetworkIDManager, this.ObjectIndex, new string[] { Convert.ToBase64String(data) });
+                ComponentManager<Raft_Network>.Value.RPC(msg, Target.All, EP2PSend.k_EP2PSendReliable, (NetworkChannel)17732);
+            }
+        }
+    }
+
+    // Class for handling how to display a custom item.
+    public abstract class Block_CustomBlock_Base : Block, IRaycastable
+    {
+        protected byte[] imageData;
+        protected bool rendererPatched = false;
+        protected bool showingText;
 
         public byte[] ImageData
         {
@@ -658,6 +875,8 @@ namespace DestinyCustomFlags
             }
         }
 
+        public abstract CustomFlags.BlockType CustomBlockType { get; }
+
         void Start()
         {
             if (!this.rendererPatched)
@@ -670,11 +889,81 @@ namespace DestinyCustomFlags
          * Attempt to load the new data into the renderer, returning whether it
          * succeeded.
          */
-        private bool PatchRenderer()
+        protected abstract bool PatchRenderer();
+
+        public override RGD Serialize_Save()
+        {
+            var r = CustomFlags.CreateObject<RGD_Storage>();
+            r.CopyFieldsOf(new RGD_Block(RGDType.Block, this));
+            r.slots = new RGD_Slot[] { CustomFlags.CreateObject<RGD_Slot>() };
+            r.slots[0].exclusiveString = Convert.ToBase64String(this.ImageData);
+            r.slots[0].itemAmount = 1;
+            return r;
+        }
+
+        public override RGD_Block GetBlockCreationData()
+        {
+            return this.Serialize_Save() as RGD_Block;
+        }
+
+        void IRaycastable.OnIsRayed()
+        {
+            if (!this.hasBeenPlaced || !CustomFlags.EditorEnabled)
+            {
+                return;
+            }
+            CanvasHelper canvas = ComponentManager<CanvasHelper>.Value;
+            if (CanvasHelper.ActiveMenu != MenuType.None || !Helper.LocalPlayerIsWithinDistance(transform.position, Player.UseDistance))
+            {
+                if (this.showingText)
+                {
+                    canvas.displayTextManager.HideDisplayTexts();
+                    this.showingText = false;
+                }
+            }
+            else
+            {
+                canvas.displayTextManager.ShowText($"Press {CustomFlags.InteractKey} to open the edit menu.", CustomFlags.InteractKey, 0, 0, false);
+                this.showingText = true;
+                if (Input.GetKeyDown(CustomFlags.InteractKey))
+                {
+                    CustomFlags.OpenCustomFlagsMenu(this);
+                }
+            }
+        }
+
+        void IRaycastable.OnRayEnter() {}
+
+        void IRaycastable.OnRayExit()
+        {
+            if (this.showingText)
+            {
+                ComponentManager<CanvasHelper>.Value.displayTextManager.HideDisplayTexts();
+                this.showingText = false;
+            }
+        }
+    }
+
+    public class Block_CustomFlag : Block_CustomBlock_Base
+    {
+        public override CustomFlags.BlockType CustomBlockType
+        {
+            get
+            {
+                return CustomFlags.BlockType.FLAG;
+            }
+        }
+
+        /*
+         * Attempt to load the new data into the renderer, returning whether it
+         * succeeded.
+         */
+        protected override bool PatchRenderer()
         {
             if (!this.occupyingComponent)
             {
                 this.occupyingComponent = this.GetComponent<OccupyingComponent>();
+                this.occupyingComponent.FindRenderers();
             }
             if (this.imageData == null)
             {
@@ -683,7 +972,7 @@ namespace DestinyCustomFlags
             if (this.imageData.Length != 0)
             {
                 // Create a new material from our data.
-                Material mat = CustomFlags.CreateMaterialFromImageData(this.imageData);
+                Material mat = CustomFlags.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
                 // If the creation fails, return false to signify.
                 if (!mat)
                 {
@@ -707,63 +996,79 @@ namespace DestinyCustomFlags
                 // Replace the material for the correct renderer.
                 if (this.occupyingComponent.renderers.Length == 1)
                 {
-                    this.occupyingComponent.renderers[0].material = CustomFlags.instance.defaultFlag;
+                    this.occupyingComponent.renderers[0].material = CustomFlags.instance.defaultMaterials[this.CustomBlockType];
                 }
                 else
                 {
-                    this.occupyingComponent.renderers[1].material = CustomFlags.instance.defaultFlag;
+                    this.occupyingComponent.renderers[1].material = CustomFlags.instance.defaultMaterials[this.CustomBlockType];
                 }
             }
 
             this.rendererPatched = true;
-            this.GetComponent<CF_Network>()?.BroadcastFlag(this.imageData);
+            this.GetComponent<CustomBlock_Network>()?.BroadcastChange(this.imageData);
             return true;
         }
+    }
 
-        public override RGD Serialize_Save()
+    public class Block_CustomSail : Block_CustomBlock_Base
+    {
+        public override CustomFlags.BlockType CustomBlockType
         {
-            var r = CustomFlags.CreateObject<RGD_Storage>();
-            r.CopyFieldsOf(new RGD_Block(RGDType.Block, this));
-            r.slots = new RGD_Slot[] { CustomFlags.CreateObject<RGD_Slot>() };
-            r.slots[0].exclusiveString = Convert.ToBase64String(this.ImageData);
-            return r;
+            get
+            {
+                return CustomFlags.BlockType.SAIL;
+            }
         }
 
-        void IRaycastable.OnIsRayed()
+        // We need to add sail data to this RGD.
+        public override RGD Serialize_Save()
         {
-            if (!this.hasBeenPlaced)
+            RGD_Storage rgd = base.Serialize_Save() as RGD_Storage;
+            // Attach our data to the existing save data.
+            rgd.isOpen = this.GetComponent<Sail>().open;
+            // Doing a little data abusing here.
+            rgd.storageObjectIndex = BitConverter.ToUInt32(BitConverter.GetBytes(this.GetComponent<Sail>().LocalRotation), 0);
+
+            return rgd;
+        }
+
+        /*
+         * Attempt to load the new data into the renderer, returning whether it
+         * succeeded.
+         */
+        protected override bool PatchRenderer()
+        {
+            if (!this.occupyingComponent)
             {
-                return;
+                this.occupyingComponent = this.GetComponent<OccupyingComponent>();
+                this.occupyingComponent.FindRenderers();
             }
-            CanvasHelper canvas = ComponentManager<CanvasHelper>.Value;
-            if (CanvasHelper.ActiveMenu != MenuType.None || !Helper.LocalPlayerIsWithinDistance(transform.position, Player.UseDistance))
+            if (this.imageData == null)
             {
-                if (this.showingText)
+                return false;
+            }
+            if (this.imageData.Length != 0)
+            {
+                // Create a new material from our data.
+                Material mat = CustomFlags.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
+                // If the creation fails, return false to signify.
+                if (!mat)
                 {
-                    canvas.displayTextManager.HideDisplayTexts();
-                    this.showingText = false;
+                    return false;
                 }
+
+                // Replace the material.
+                this.occupyingComponent.renderers[1].material = mat;
             }
             else
             {
-                canvas.displayTextManager.ShowText("Press E to open the flag selection menu.", 0, true, 0);
-                this.showingText = true;
-                if (Input.GetKeyDown(KeyCode.E))
-                {
-                    CustomFlags.OpenCustomFlagsMenu(this);
-                }
+                // If we are here, use the default sail material.
+                this.occupyingComponent.renderers[1].material = CustomFlags.instance.defaultMaterials[this.CustomBlockType];
             }
-        }
 
-        void IRaycastable.OnRayEnter() {}
-
-        void IRaycastable.OnRayExit()
-        {
-            if (this.showingText)
-            {
-                ComponentManager<CanvasHelper>.Value.displayTextManager.HideDisplayTexts();
-                this.showingText = false;
-            }
+            this.rendererPatched = true;
+            this.GetComponent<CustomSail_Network>()?.BroadcastChange(this.imageData);
+            return true;
         }
     }
 
@@ -772,16 +1077,47 @@ namespace DestinyCustomFlags
     {
         public static void Postfix(ref RGD_Block __instance, Block block)
         {
-            if (__instance.BlockIndex == CustomFlags.CUSTOM_FLAG_ITEM_ID)
+            // Make sure it is one of our blocks.
+            if (__instance.BlockIndex >= CustomFlags.CUSTOM_BLOCK_ID_MIN && __instance.BlockIndex <= CustomFlags.CUSTOM_BLOCK_ID_MAX)
             {
-                Block_CustomFlag cf = block as Block_CustomFlag;
+                Block_CustomBlock_Base cb = block as Block_CustomBlock_Base;
                 RGD_Storage rgd = __instance as RGD_Storage;
-                if (cf != null && rgd != null)
+                if (cb != null && rgd != null)
                 {
-                    byte[] imageData = Convert.FromBase64String(rgd.slots[0].exclusiveString);
-                    if (imageData != null)
+                    if (Raft_Network.IsHost || !CustomFlags.IgnoreFlagMessages)
                     {
-                        cf.ImageData = imageData;
+                        byte[] imageData = Convert.FromBase64String(rgd.slots[0].exclusiveString);
+                        if (rgd.slots[0].itemAmount == 0)
+                        {
+                            CustomFlags.DebugLog("Found flag with old save data. Updating to new save system.");
+                            // Handle older saves with a different form of image
+                            // save data.
+                            if (Raft_Network.IsHost)
+                            {
+                                imageData = imageData.SanitizeImage(cb.CustomBlockType);
+                            }
+                            else
+                            {
+                                // Small protection against unsafe save data
+                                // from remote host.
+                                imageData = new byte[0];
+                            }
+                        }
+                        if (imageData != null)
+                        {
+                            cb.ImageData = imageData;
+                        }
+                    }
+
+                    // Handle the custom sail.
+                    if (cb is Block_CustomSail)
+                    {
+                        Sail sail = block.GetComponent<Sail>();
+                        if (rgd.isOpen)
+                        {
+                            sail?.Open();
+                        }
+                        sail?.SetRotation(BitConverter.ToSingle(BitConverter.GetBytes(rgd.storageObjectIndex), 0));
                     }
                 }
             }
@@ -819,7 +1155,7 @@ namespace DestinyCustomFlags
             baseImg.Apply();
         }
 
-        public static byte[] SanitizeImage(this byte[] arr)
+        public static byte[] SanitizeImage(this byte[] arr, CustomFlags.BlockType bt)
         {
             if (arr == null)
             {
@@ -836,9 +1172,11 @@ namespace DestinyCustomFlags
                 return new byte[0];
             }
 
+            (int, int) size = CustomFlags.SIZES[bt];
+
             // Resize the image before saving the color data.
-            Texture2D tex = new Texture2D(381, 256);
-            tex.Edit(texOriginal, 0, 0, 381, 256);
+            Texture2D tex = new Texture2D(size.Item1, size.Item2);
+            tex.Edit(texOriginal, 0, 0, size.Item1, size.Item2);
 
             Color32[] colors = tex.GetPixels32();
             List<byte> bytes = new List<byte>();
@@ -857,10 +1195,12 @@ namespace DestinyCustomFlags
         {
             if (arr == null)
             {
+                CustomFlags.DebugLog("Failed to convert byte array to Texture2D: array was null.");
                 return null;
             }
             if ((arr.Length & 3) != 0 || arr.Length != (width * height * 4))
             {
+                CustomFlags.DebugLog($"Failed to convert byte array to Texture2D: array was wrong length (expected {width * height * 4}, got {arr.Length}).");
                 return null;
             }
 

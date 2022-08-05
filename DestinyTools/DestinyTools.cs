@@ -83,7 +83,6 @@ public class DestinyTools : Mod
                 //
                 // *Only* set the outline to false if another block is not this
                 // one.
-                Debug.Log(1);
                 if (DestinyTools.startingBlock != DestinyTools.endingBlock && DestinyTools.startingBlock != found.Item2)
                 {
                     DestinyTools.startingBlock.SetInstanceOutline(false);
@@ -93,12 +92,10 @@ public class DestinyTools : Mod
             }
             else if (DestinyTools.startingBlock)
             {
-                Debug.Log(2);
                 DestinyTools.endingBlock = found.Item2;
             }
             else
             {
-                Debug.Log(3);
                 DestinyTools.startingBlock = found.Item2;
             }
 
