@@ -1,6 +1,5 @@
 using HarmonyLib;
 using I2.Loc;
-using Steamworks;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -11,30 +10,54 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text;
 using UnityEngine;
-using UnityEngine.Networking;
+
 
 namespace DestinyCustomFlags
 {
     public class CustomFlags : Mod
     {
-        //TODO: Raycast combine for sail;
+        //TODO: Raycast combine for interactable blocks.
+        // I want to implement all of the following blocks, but some may have
+        // difficulties that will need to be resolved. For example, the bed
+        // is going to need a custom class that extends the Bed class, cause
+        // the Bed class derives from Block.
 
+        private const int BED_ID = 448; // Renderer for sheet flat is 1, occupied is 2.
+        private const int CURTAIN_HORIZONTAL_ID = 447;
+        private const int CURTAIN_VERTICAL_ID = 446;
         private const int FLAG_ID = 478;
+        private const int RUG_BIG_ID = 158;
+        private const int RUG_SMALL_ID = 439;
         private const int SAIL_ID = 126;
 
         // In little endian this would represent the string "De";
         public static readonly int CUSTOM_FLAG_ITEM_ID = 25924;
         public static readonly int CUSTOM_SAIL_ITEM_ID = 25925;
+        public static readonly int CUSTOM_BED_ITEM_ID = 25926;
+        public static readonly int CUSTOM_CURTAIN_H_ITEM_ID = 25927;
+        public static readonly int CUSTOM_CURTAIN_V_ITEM_ID = 25928;
+        public static readonly int CUSTOM_RUG_BIG_ITEM_ID = 25929;
+        public static readonly int CUSTOM_RUG_SMALL_ITEM_ID = 25930;
         public static readonly int CUSTOM_BLOCK_ID_MIN = CUSTOM_FLAG_ITEM_ID;
-        public static readonly int CUSTOM_BLOCK_ID_MAX = CUSTOM_SAIL_ITEM_ID;
+        public static readonly int CUSTOM_BLOCK_ID_MAX = CUSTOM_RUG_SMALL_ITEM_ID;
         public static readonly Dictionary<BlockType, (int, int)> LOCATIONS = new Dictionary<BlockType, (int, int)>()
         {
+            { BlockType.BED, (5, 5) },
+            { BlockType.CURTAIN_H, (4, 132) },//
+            { BlockType.CURTAIN_V, (4, 132) },//
             { BlockType.FLAG, (253, 768) },
+            { BlockType.RUG_BIG, (7, 7) },
+            { BlockType.RUG_SMALL, (637, 964) },
             { BlockType.SAIL, (4, 132) },
         };
         public static readonly Dictionary<BlockType, (int, int)> SIZES = new Dictionary<BlockType, (int, int)>()
         {
+            { BlockType.BED, (682, 959) },
+            { BlockType.CURTAIN_H, (4, 132) },//
+            { BlockType.CURTAIN_V, (4, 132) },//
             { BlockType.FLAG, (381, 256) },
+            { BlockType.RUG_BIG, (627, 330) },
+            { BlockType.RUG_SMALL, (385, 253) },
             { BlockType.SAIL, (792, 674) },
         };
 
@@ -115,27 +138,27 @@ namespace DestinyCustomFlags
             // First thing is first, let's fetch our shader from the game.
             this.shader = Shader.Find(" BlockPaint");
 
-            // Second, setup the data for each block. First is the flag.
-            var originalMat = ItemManager.GetItemByIndex(FLAG_ID).settings_buildable.GetBlockPrefab(DPS.Floor).GetComponent<OccupyingComponent>().renderers[1].material;
-            this.AddBaseTextures(BlockType.FLAG, originalMat, "flag/transparent.png", "flag/normal.png", "flag/transparent.png");
-            // Setup the data for the sail.
-            originalMat = ItemManager.GetItemByIndex(SAIL_ID).settings_buildable.GetBlockPrefab(DPS.Floor).GetComponentInChildren<MeshRenderer>().material;
-            this.AddBaseTextures(BlockType.SAIL, originalMat, "sail/transparent.png", "sail/normal.png", "sail/transparent.png");
+            // Second, setup most of the materials using the basic methods.
+            this.SetupBasicBlockData(BlockType.BED, "bed", this.GetOriginalMaterial(BED_ID));
+            this.SetupBasicBlockData(BlockType.CURTAIN_V, "curtain_v", this.GetOriginalMaterial(CURTAIN_VERTICAL_ID));
+            this.SetupBasicBlockData(BlockType.FLAG, "flag", this.GetOriginalMaterial(FLAG_ID));
+            this.SetupBasicBlockData(BlockType.RUG_BIG, "rug_big", this.GetOriginalMaterial(RUG_BIG_ID));
+            this.SetupBasicBlockData(BlockType.RUG_SMALL, "rug_small", this.GetOriginalMaterial(RUG_SMALL_ID));
+            this.SetupBasicBlockData(BlockType.SAIL, "sail", this.GetOriginalMaterial(SAIL_ID));
 
-            // Create our default flag material.
-            this.defaultMaterials[BlockType.FLAG] = CustomFlags.CreateMaterialFromImageData(GetEmbeddedFileBytes("flag/default.png").SanitizeImage(BlockType.FLAG), BlockType.FLAG);
-            this.defaultMaterials[BlockType.SAIL] = CustomFlags.CreateMaterialFromImageData(GetEmbeddedFileBytes("sail/default.png").SanitizeImage(BlockType.SAIL), BlockType.SAIL);
-            // Create the custom flag item base.
+            // Create the custom block item bases.
             this.customItems = new Item_Base[] {
+                //this.CreateCustomBedItem(),
+                //this.CreateCustomCurtainHItem(),
+                //this.CreateCustomCurtainVItem(),
                 this.CreateCustomFlagItem(),
+                //this.CreateCustomRugBigItem(),
+                //this.CreateCustomRugSmallItem(),
                 this.CreateCustomSailItem(),
             };
 
+            // Register the items.
             Array.ForEach(this.customItems, x => RAPI.RegisterItem(x));
-
-            // Create the default flag sprite for the menu.
-            this.defaultSprites[BlockType.FLAG] = CustomFlags.CreateSpriteFromBytes(GetEmbeddedFileBytes("flag/default.png").SanitizeImage(BlockType.FLAG), BlockType.FLAG);
-            this.defaultSprites[BlockType.SAIL] = CustomFlags.CreateSpriteFromBytes(GetEmbeddedFileBytes("sail/default.png").SanitizeImage(BlockType.SAIL), BlockType.SAIL);
 
             // Now, load the menu from the asset bundle.
             var bundleLoadRequest = AssetBundle.LoadFromMemoryAsync(GetEmbeddedFileBytes("general_assets/customflags.assets"));
@@ -182,6 +205,17 @@ namespace DestinyCustomFlags
         public static void OpenCustomFlagsMenu(Block_CustomBlock_Base cf)
         {
             CustomFlags.cfMenu.ShowMenu(cf);
+        }
+
+        /*
+         * Performs serveral tasks, including the textures, material, and the
+         * sprite.
+         */
+        private void SetupBasicBlockData(BlockType bt, string imgDir, Material originalMat)
+        {
+            this.AddBaseTextures(bt, originalMat, $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
+            this.defaultMaterials[bt] = CustomFlags.CreateMaterialFromImageData(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
+            this.defaultSprites[bt] = CustomFlags.CreateSpriteFromBytes(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
         }
 
         /*
@@ -287,6 +321,126 @@ namespace DestinyCustomFlags
         }
 
         /*
+         * Gets the original material from the item with the specified ID,
+         * assuming that any of the MeshRenderers will have the correct
+         * material, and that any of the DPS types is acceptable.
+         */
+        private Material GetOriginalMaterial(int id)
+        {
+            return ItemManager.GetItemByIndex(id).settings_buildable.GetBlockPrefabs()[0].GetComponentInChildren<MeshRenderer>().material;
+        }
+
+        /*
+         * A generic method for making new custom blocks. For blocks that can
+         * only be placed on one type of surface. The data strings are used for
+         * setting the various strings, and should be provided in the following
+         * order:
+         *  * Unique Name
+         *  * Display Name
+         *  * Crafting Sub
+         *  * Crafting Sub Name
+         *  * Description
+         */
+        private Item_Base CreateGenericCustomItem<BlockClass, NetworkClass>(int originalID, int newID, string[] data, Vector3 bbSize, Vector3 bbCenter, CostMultiple[] recipe, CraftingCategory craftCat) where BlockClass : Block where NetworkClass : MonoBehaviour_Network
+        {
+            // Create a clone of the regular flag.
+            Item_Base originalItem = ItemManager.GetItemByIndex(originalID);
+            Item_Base customBlock = ScriptableObject.CreateInstance<Item_Base>();
+            customBlock.Initialize(newID, data[0], 1);
+            customBlock.settings_buildable = originalItem.settings_buildable.Clone();
+            customBlock.settings_consumeable = originalItem.settings_consumeable.Clone();
+            customBlock.settings_cookable = originalItem.settings_cookable.Clone();
+            customBlock.settings_equipment = originalItem.settings_equipment.Clone();
+            customBlock.settings_Inventory = originalItem.settings_Inventory.Clone();
+            customBlock.settings_recipe = originalItem.settings_recipe.Clone();
+            customBlock.settings_usable = originalItem.settings_usable.Clone();
+
+            Block[] blocks = customBlock.settings_buildable.GetBlockPrefabs().Clone() as Block[];
+
+            // Set the block to not be paintable.
+            Traverse.Create(customBlock.settings_buildable).Field("primaryPaintAxis").SetValue(Axis.None);
+
+            // Setup the recipe.
+            customBlock.SetRecipe(recipe, craftCat, 1, false, data[2], 1);
+            Traverse.Create(customBlock.settings_recipe).Field("_hiddenInResearchTable").SetValue(false);
+
+            // Set the display stuff.
+            customBlock.settings_Inventory.DisplayName = data[1];
+            customBlock.settings_Inventory.Description = data[4];
+
+            // Localization stuff.
+            customBlock.settings_Inventory.LocalizationTerm = "Item/destiny_CustomFlag";
+            var language = new LanguageSourceData()
+            {
+                mDictionary = new Dictionary<string, TermData>
+                {
+                    [$"Item/{data[0]}"] = new TermData() { Languages = new[] { $"{data[1]}@{data[4]}" } },
+                    [$"CraftingSub/{data[2]}"] = new TermData() { Languages = new[] { data[3] } }
+                },
+                mLanguages = new List<LanguageData> { new LanguageData() { Code = "en", Name = "English" } }
+            };
+            LocalizationManager.Sources.Add(language);
+            Traverse.Create(typeof(LocalizationManager)).Field("OnLocalizeEvent").GetValue<LocalizationManager.OnLocalizeCallback>().Invoke();
+
+
+            // Now, we need to replace Block with BlockType;
+            for (int i = 0; i < blocks.Length; ++i)
+            {
+                if (blocks[i])
+                {
+                    // Based on some of Aidan's code.
+                    var blockPrefab = Instantiate(blocks[i], this.prefabHolder, false);
+                    blockPrefab.name = $"Block_CustomFlag_{i}";
+                    var cb = blockPrefab.gameObject.AddComponent<BlockClass>();
+                    cb.CopyFieldsOf(blockPrefab);
+                    cb.ReplaceValues(blockPrefab, cb);
+                    blockPrefab.ReplaceValues(originalItem, customBlock);
+                    blocks[i] = cb;
+                    DestroyImmediate(blockPrefab);
+                    cb.gameObject.AddComponent<RaycastInteractable>();
+                    var c = cb.gameObject.AddComponent<BoxCollider>();
+                    c.size = bbSize;
+                    c.center = bbCenter;
+
+                    c.isTrigger = true;
+                    c.enabled = true;
+                    c.gameObject.layer = 10;
+                    cb.networkedBehaviour = cb.gameObject.AddComponent<NetworkClass>();
+                    cb.networkType = NetworkType.NetworkBehaviour;
+
+                    // Use traverse to get around generic BS.
+                    Traverse.Create(cb).Method("set_ImageData", new byte[0]).GetValue();
+                }
+            }
+
+            Traverse.Create(customBlock.settings_buildable).Field("blockPrefabs").SetValue(blocks);
+
+            foreach (var q in Resources.FindObjectsOfTypeAll<SO_BlockQuadType>())
+                if (q.AcceptsBlock(originalItem))
+                    Traverse.Create(q).Field("acceptableBlockTypes").GetValue<List<Item_Base>>().Add(customBlock);
+
+            return customBlock;
+        }
+
+        private Item_Base CreateCustomBedItem()
+        {
+            var recipe = new[] {
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(21) }, 10),
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 20),
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(95) }, 14),
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(20) }, 9)
+            };
+            var data = new[] {
+                "destiny_CustomBed",
+                "Custom Bed",
+                "CustomBed",
+                "Custom Bed",
+                "A customizable bed"
+            };
+            return this.CreateGenericCustomItem<Block_CustomBed, CustomBlock_Network>(BED_ID, CUSTOM_BED_ITEM_ID, data, new Vector3(), new Vector3(), recipe, CraftingCategory.Other);
+        }
+
+        /*
          * Finds the base flag we will be using and creates a new item for our
          * custom flag.
          */
@@ -317,6 +471,10 @@ namespace DestinyCustomFlags
                     new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 6)
                 }, CraftingCategory.Decorations, 1, false, "CustomFlag", 1);
             Traverse.Create(customFlag.settings_recipe).Field("_hiddenInResearchTable").SetValue(false);
+
+            // Set the display stuff.
+            customFlag.settings_Inventory.DisplayName = "Custom Flag";
+            customFlag.settings_Inventory.Description = "A customizable flag.";
 
             // Localization stuff.
             customFlag.settings_Inventory.LocalizationTerm = "Item/destiny_CustomFlag";
@@ -408,15 +566,16 @@ namespace DestinyCustomFlags
 
             Block[] blocks = customSail.settings_buildable.GetBlockPrefabs().Clone() as Block[];
 
-            // Set the block to not be paintable.
-            Traverse.Create(customSail.settings_buildable).Field("primaryPaintAxis").SetValue(Axis.None);
+            // Set the display stuff.
+            customSail.settings_Inventory.DisplayName = "Custom Sail";
+            customSail.settings_Inventory.Description = "A customizable sail.";
 
             // Setup the recipe.
             customSail.SetRecipe(new[]
                 {
-                    new CostMultiple(new[] { ItemManager.GetItemByIndex(21) }, 4),
-                    new CostMultiple(new[] { ItemManager.GetItemByIndex(23) }, 2),
-                    new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 6)
+                    new CostMultiple(new[] { ItemManager.GetItemByIndex(21) }, 10),
+                    new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 20),
+                    new CostMultiple(new[] { ItemManager.GetItemByIndex(23) }, 3)
                 }, CraftingCategory.Navigation, 1, false, "CustomSail", 1);
             Traverse.Create(customSail.settings_recipe).Field("_hiddenInResearchTable").SetValue(false);
 
@@ -434,8 +593,7 @@ namespace DestinyCustomFlags
             LocalizationManager.Sources.Add(language);
             Traverse.Create(typeof(LocalizationManager)).Field("OnLocalizeEvent").GetValue<LocalizationManager.OnLocalizeCallback>().Invoke();
 
-
-            // Now, we need to replace Block with Block_CustomSail;
+            // Now, we need to replace Block with Block_CustomSail.
             for (int i = 0; i < blocks.Length; ++i)
             {
                 if (blocks[i])
@@ -471,6 +629,114 @@ namespace DestinyCustomFlags
 
             return customSail;
         }
+
+        /*
+         * Finds the base flag we will be using and creates a new item for our
+         * custom flag.
+         */
+        private Item_Base CreateCustomCurtainHItem()
+        {
+            // Create a clone of the regular flag.
+            Item_Base originalItem = ItemManager.GetItemByIndex(FLAG_ID);
+            Item_Base customFlag = ScriptableObject.CreateInstance<Item_Base>();
+            customFlag.Initialize(CUSTOM_FLAG_ITEM_ID, "destiny_CustomFlag", 1);
+            customFlag.settings_buildable = originalItem.settings_buildable.Clone();
+            customFlag.settings_consumeable = originalItem.settings_consumeable.Clone();
+            customFlag.settings_cookable = originalItem.settings_cookable.Clone();
+            customFlag.settings_equipment = originalItem.settings_equipment.Clone();
+            customFlag.settings_Inventory = originalItem.settings_Inventory.Clone();
+            customFlag.settings_recipe = originalItem.settings_recipe.Clone();
+            customFlag.settings_usable = originalItem.settings_usable.Clone();
+
+            Block[] blocks = customFlag.settings_buildable.GetBlockPrefabs().Clone() as Block[];
+
+            // Set the block to not be paintable.
+            Traverse.Create(customFlag.settings_buildable).Field("primaryPaintAxis").SetValue(Axis.None);
+
+            // Setup the recipe.
+            customFlag.SetRecipe(new[]
+                {
+                    new CostMultiple(new[] { ItemManager.GetItemByIndex(21) }, 4),
+                    new CostMultiple(new[] { ItemManager.GetItemByIndex(23) }, 2),
+                    new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 6)
+                }, CraftingCategory.Decorations, 1, false, "CustomFlag", 1);
+            Traverse.Create(customFlag.settings_recipe).Field("_hiddenInResearchTable").SetValue(false);
+
+            // Set the display stuff.
+            customFlag.settings_Inventory.DisplayName = "Custom Flag";
+            customFlag.settings_Inventory.Description = "A customizable flag.";
+
+            // Localization stuff.
+            customFlag.settings_Inventory.LocalizationTerm = "Item/destiny_CustomFlag";
+            var language = new LanguageSourceData()
+            {
+                mDictionary = new Dictionary<string, TermData>
+                {
+                    ["Item/destiny_CustomFlag"] = new TermData() { Languages = new[] { "Custom Flag@A customizable flag." } },
+                    ["CraftingSub/CustomFlag"] = new TermData() { Languages = new[] { "Custom Flag" } }
+                },
+                mLanguages = new List<LanguageData> { new LanguageData() { Code = "en", Name = "English" } }
+            };
+            LocalizationManager.Sources.Add(language);
+            Traverse.Create(typeof(LocalizationManager)).Field("OnLocalizeEvent").GetValue<LocalizationManager.OnLocalizeCallback>().Invoke();
+
+
+            // Now, we need to replace Block with Block_CustomFlag;
+            for (int i = 0; i < blocks.Length; ++i)
+            {
+                if (blocks[i])
+                {
+                    // Based on some of Aidan's code.
+                    var flagPrefab = Instantiate(blocks[i], this.prefabHolder, false);
+                    flagPrefab.name = $"Block_CustomFlag_{i}";
+                    var cf = flagPrefab.gameObject.AddComponent<Block_CustomFlag>();
+                    cf.CopyFieldsOf(flagPrefab);
+                    cf.ReplaceValues(flagPrefab, cf);
+                    flagPrefab.ReplaceValues(originalItem, customFlag);
+                    blocks[i] = cf;
+                    DestroyImmediate(flagPrefab);
+                    cf.gameObject.AddComponent<RaycastInteractable>();
+                    var c = cf.gameObject.AddComponent<BoxCollider>();
+                    switch (cf.dpsType)
+                    {
+                        case DPS.Floor:
+                            c.size = new Vector3(0.292296f, 3.260565f, 0.292296f);
+                            c.center = new Vector3(0, 1.372016f, 0);
+                            break;
+                        case DPS.Ceiling:
+                            c.size = new Vector3(1.204021f, 1.826855f, 0.2007985f);
+                            c.center = new Vector3(0, -1.012313f, 0);
+                            break;
+                        case DPS.Wall:
+                            c.size = new Vector3(0.214351f, 1.739691f, 1.0067628f);
+                            c.center = new Vector3(0, 0, 0.5f);
+                            break;
+                        default:
+                            c.size = Vector3.zero;
+                            c.center = Vector3.zero;
+                            break;
+                    }
+
+                    c.isTrigger = true;
+                    c.enabled = true;
+                    c.gameObject.layer = 10;
+                    cf.networkedBehaviour = cf.gameObject.AddComponent<CustomBlock_Network>();
+                    cf.networkType = NetworkType.NetworkBehaviour;
+
+                    cf.ImageData = new byte[0];
+                }
+            }
+
+            Traverse.Create(customFlag.settings_buildable).Field("blockPrefabs").SetValue(blocks);
+
+            foreach (var q in Resources.FindObjectsOfTypeAll<SO_BlockQuadType>())
+                if (q.AcceptsBlock(originalItem))
+                    Traverse.Create(q).Field("acceptableBlockTypes").GetValue<List<Item_Base>>().Add(customFlag);
+
+            return customFlag;
+        }
+
+
 
         /*
          * Overwrites the data in the specified area with the specified texture.
@@ -541,536 +807,17 @@ namespace DestinyCustomFlags
 
         public enum BlockType
         {
+            BED,
+            CURTAIN_H,
+            CURTAIN_V,
             FLAG,
+            RUG_BIG,
+            RUG_SMALL,
             SAIL
         }
     }
 
 
-
-    public class CustomFlagsMenu : MonoBehaviour
-    {
-        private CanvasGroup cg;
-        private UnityEngine.UI.Image preview;
-        private Block_CustomBlock_Base currentBlock;
-        private TMPro.TMP_InputField inputField;
-        private byte[] imageData;
-        private bool shown;
-
-        void Start()
-        {
-            // Setup the button events.
-            foreach (var button in this.GetComponentsInChildren<UnityEngine.UI.Button>())
-            {
-                if (button.gameObject.name.StartsWith("CloseButton"))
-                {
-                    button.onClick.AddListener(this.HideMenu);
-                }
-                else if (button.gameObject.name.StartsWith("DefaultButton"))
-                {
-                    button.onClick.AddListener(this.SetBlockDefault);
-                }
-                else if (button.gameObject.name.StartsWith("LoadButton"))
-                {
-                    button.onClick.AddListener(this.LoadPreviewStart);
-                }
-                else if (button.gameObject.name.StartsWith("UpdateButton"))
-                {
-                    button.onClick.AddListener(this.UpdateBlock);
-                }
-            }
-
-            // Get the components.
-            this.cg = this.GetComponent<CanvasGroup>();
-            this.preview = this.GetComponentsInChildren<UnityEngine.UI.Image>().First(x => x.gameObject.name.StartsWith("Preview"));
-            this.inputField = this.GetComponentInChildren<TMPro.TMP_InputField>();
-
-            // Setup the text entry.
-            this.inputField.onSubmit.AddListener(this.LoadPreviewStartText);
-
-            this.HideMenu();
-        }
-
-        void Update()
-        {
-            if (this.shown && Input.GetKeyDown("escape"))
-            {
-                this.HideMenu();
-            }
-        }
-
-        private void HandleError(ErrorType e)
-        {
-            CustomFlags.Log(e);
-        }
-
-        private void HandleError(string e)
-        {
-            CustomFlags.Log(e);
-        }
-
-        public void HideMenu()
-        {
-            this.currentBlock = null;
-            this.cg.alpha = 0;
-            this.cg.interactable = false;
-            this.cg.blocksRaycasts = false;
-            this.shown = false;
-            RAPI.ToggleCursor(false);
-        }
-
-        public IEnumerator LoadPreview()
-        {
-            byte[] temp = null;
-
-            string path = this.inputField.text;
-
-            if (path.ToLower().StartsWith("http://") || path.ToLower().StartsWith("https://"))
-            {
-                UnityWebRequest www = UnityWebRequest.Get(path);
-                var handler = new DownloadHandlerTexture();
-                www.downloadHandler = handler;
-
-                yield return www.SendWebRequest();
-
-                if (www.responseCode > 500)
-                {
-                    this.HandleError("A server error occured while getting the url.");
-                }
-                else if (www.responseCode > 400)
-                {
-                    this.HandleError("The url could not be accessed.");
-                }
-                else if (www.responseCode != 200)
-                {
-                    this.HandleError($"Request had response code of {www.responseCode}");
-                }
-                else if (www.error != null)
-                {
-                    this.HandleError(www.error);
-                }
-                else if (handler.texture == null)
-                {
-                    this.HandleError("Remote file was not a valid texture.");
-                }
-                else
-                {
-                    // Success!
-                    this.imageData = handler.data.SanitizeImage(this.currentBlock.CustomBlockType);
-                    this.preview.overrideSprite = CustomFlags.CreateSpriteFromBytes(this.imageData, this.currentBlock.CustomBlockType);
-                }
-            }
-            else
-            {
-                if (File.Exists(path))
-                {
-                    temp = File.ReadAllBytes(path);
-                    byte[] temp2 = temp.Length > 0 ? temp.SanitizeImage(this.currentBlock.CustomBlockType) : temp;
-                    Sprite s = CustomFlags.CreateSpriteFromBytes(temp2, this.currentBlock.CustomBlockType);
-                    if (temp2.Length == 0 || s == null)
-                    {
-                        this.HandleError("File does not contain a valid flag. Valid flag must be a PNG or JPG file.");
-                    }
-                    else
-                    {
-                        this.imageData = temp2;
-                        this.preview.overrideSprite = s;
-                    }
-                }
-                else
-                {
-                    this.HandleError("Path could not be found.");
-                }
-            }
-        }
-
-        public void LoadPreviewStart()
-        {
-            StartCoroutine(this.LoadPreview());
-        }
-
-        public void LoadPreviewStartText(string _ = "")
-        {
-            StartCoroutine(this.LoadPreview());
-        }
-
-        public void SetBlockDefault()
-        {
-            this.imageData = new byte[0];
-            this.preview.overrideSprite = CustomFlags.instance.defaultSprites[this.currentBlock.CustomBlockType];
-        }
-
-        public void ShowMenu(Block_CustomBlock_Base cb)
-        {
-            if (cb == null)
-            {
-                return;
-            }
-            this.cg.alpha = 1;
-            this.cg.interactable = true;
-            this.cg.blocksRaycasts = true;
-            this.shown = true;
-            this.currentBlock = cb;
-            this.imageData = cb.ImageData;
-            this.preview.overrideSprite = CustomFlags.CreateSpriteFromBytes(this.imageData, cb.CustomBlockType);
-            RAPI.ToggleCursor(true);
-        }
-
-        public void UpdateBlock()
-        {
-            if (this.currentBlock)
-            {
-                this.currentBlock.ImageData = this.imageData;
-            }
-            this.HideMenu();
-        }
-
-        enum ErrorType
-        {
-            PATH_NOT_FOUND,
-            URL_NOT_FOUND,
-            URL_ERROR,
-            BAD_DATA
-        }
-    }
-
-
-    // Base class for custom block types' network behaviour.
-    public class CustomBlock_Network : MonoBehaviour_Network
-    {
-        public virtual void OnBlockPlaced()
-        {
-            NetworkIDManager.AddNetworkID(this);
-        }
-
-        protected override void OnDestroy()
-        {
-            NetworkIDManager.RemoveNetworkID(this);
-            base.OnDestroy();
-        }
-
-        public override bool Deserialize(Message_NetworkBehaviour msg, CSteamID remoteID)
-        {
-            var message = msg as Message_Animal_AnimTriggers;
-            if ((int)msg.Type == -75 && message != null && message.anim_triggers.Length == 1)
-            {
-                if (!CustomFlags.IgnoreFlagMessages && !(Raft_Network.IsHost && CustomFlags.PreventChanges))
-                {
-                    byte[] data = Convert.FromBase64String(message.anim_triggers[0]);
-                    if (data != null)
-                    {
-                        this.GetComponent<Block_CustomBlock_Base>().ImageData = data;
-                        return true;
-                    }
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            return base.Deserialize(msg, remoteID);
-        }
-
-        public virtual void BroadcastChange(byte[] data)
-        {
-            if (LoadSceneManager.IsGameSceneLoaded && !CustomFlags.IgnoreFlagMessages)
-            {
-                var msg = new Message_Animal_AnimTriggers((Messages)(-75), ComponentManager<Raft_Network>.Value.NetworkIDManager, this.ObjectIndex, new string[] { Convert.ToBase64String(data) });
-                ComponentManager<Raft_Network>.Value.RPC(msg, Target.All, EP2PSend.k_EP2PSendReliable, (NetworkChannel)17732);
-            }
-        }
-    }
-
-    public class CustomSail_Network : Sail, IRaycastable
-    {
-        public virtual void OnBlockPlaced()
-        {
-            // Need to access the lower sail OnBlockPlace, but it is private.
-            //Traverse.Create((Sail)this).Method("OnBlockPlaced").GetValue();
-            typeof(Sail).GetMethod("OnBlockPlaced", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(this, null);
-            NetworkIDManager.AddNetworkID(this);
-        }
-
-        protected override void OnDestroy()
-        {
-            NetworkIDManager.RemoveNetworkID(this);
-            base.OnDestroy();
-        }
-
-        /*void IRaycastable.OnIsRayed()
-        {
-            this.OnIsRayed();
-        }
-
-        void IRaycastable.OnRayEnter()
-        {
-            this.OnRayEnter();
-        }
-
-        void IRaycastable.OnRayExit()
-        {
-            this.OnRayExit();
-        }*/
-
-        public override RGD Serialize_Save()
-        {
-            // Override so that the block class handles the save.
-            return null;
-        }
-
-        public override bool Deserialize(Message_NetworkBehaviour msg, CSteamID remoteID)
-        {
-            var message = msg as Message_Animal_AnimTriggers;
-            if ((int)msg.Type == -75 && message != null && message.anim_triggers.Length == 1)
-            {
-                if (!CustomFlags.IgnoreFlagMessages)
-                {
-                    byte[] data = Convert.FromBase64String(message.anim_triggers[0]);
-                    if (data != null)
-                    {
-                        this.GetComponent<Block_CustomBlock_Base>().ImageData = data;
-                        return true;
-                    }
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            return base.Deserialize(msg, remoteID);
-        }
-
-        public virtual void BroadcastChange(byte[] data)
-        {
-            if (LoadSceneManager.IsGameSceneLoaded && !CustomFlags.IgnoreFlagMessages)
-            {
-                var msg = new Message_Animal_AnimTriggers((Messages)(-75), ComponentManager<Raft_Network>.Value.NetworkIDManager, this.ObjectIndex, new string[] { Convert.ToBase64String(data) });
-                ComponentManager<Raft_Network>.Value.RPC(msg, Target.All, EP2PSend.k_EP2PSendReliable, (NetworkChannel)17732);
-            }
-        }
-    }
-
-    // Class for handling how to display a custom item.
-    public abstract class Block_CustomBlock_Base : Block, IRaycastable
-    {
-        protected byte[] imageData;
-        protected bool rendererPatched = false;
-        protected bool showingText;
-
-        public byte[] ImageData
-        {
-            get
-            {
-                return this.imageData;
-            }
-            set
-            {
-                // Backup our data incase the patch function fails.
-                byte[] oldData = this.imageData;
-                this.imageData = value;
-                if (!this.PatchRenderer())
-                {
-                    this.imageData = oldData;
-                }
-            }
-        }
-
-        public abstract CustomFlags.BlockType CustomBlockType { get; }
-
-        void Start()
-        {
-            if (!this.rendererPatched)
-            {
-                this.ImageData = new byte[0];
-            }
-        }
-
-        /*
-         * Attempt to load the new data into the renderer, returning whether it
-         * succeeded.
-         */
-        protected abstract bool PatchRenderer();
-
-        public override RGD Serialize_Save()
-        {
-            var r = CustomFlags.CreateObject<RGD_Storage>();
-            r.CopyFieldsOf(new RGD_Block(RGDType.Block, this));
-            r.slots = new RGD_Slot[] { CustomFlags.CreateObject<RGD_Slot>() };
-            r.slots[0].exclusiveString = Convert.ToBase64String(this.ImageData);
-            r.slots[0].itemAmount = 1;
-            return r;
-        }
-
-        public override RGD_Block GetBlockCreationData()
-        {
-            return this.Serialize_Save() as RGD_Block;
-        }
-
-        void IRaycastable.OnIsRayed()
-        {
-            if (!this.hasBeenPlaced || !CustomFlags.EditorEnabled)
-            {
-                return;
-            }
-            CanvasHelper canvas = ComponentManager<CanvasHelper>.Value;
-            if (CanvasHelper.ActiveMenu != MenuType.None || !Helper.LocalPlayerIsWithinDistance(transform.position, Player.UseDistance))
-            {
-                if (this.showingText)
-                {
-                    canvas.displayTextManager.HideDisplayTexts();
-                    this.showingText = false;
-                }
-            }
-            else
-            {
-                canvas.displayTextManager.ShowText($"Press {CustomFlags.InteractKey} to open the edit menu.", CustomFlags.InteractKey, 0, 0, false);
-                this.showingText = true;
-                if (Input.GetKeyDown(CustomFlags.InteractKey))
-                {
-                    CustomFlags.OpenCustomFlagsMenu(this);
-                }
-            }
-        }
-
-        void IRaycastable.OnRayEnter() {}
-
-        void IRaycastable.OnRayExit()
-        {
-            if (this.showingText)
-            {
-                ComponentManager<CanvasHelper>.Value.displayTextManager.HideDisplayTexts();
-                this.showingText = false;
-            }
-        }
-    }
-
-    public class Block_CustomFlag : Block_CustomBlock_Base
-    {
-        public override CustomFlags.BlockType CustomBlockType
-        {
-            get
-            {
-                return CustomFlags.BlockType.FLAG;
-            }
-        }
-
-        /*
-         * Attempt to load the new data into the renderer, returning whether it
-         * succeeded.
-         */
-        protected override bool PatchRenderer()
-        {
-            if (!this.occupyingComponent)
-            {
-                this.occupyingComponent = this.GetComponent<OccupyingComponent>();
-                this.occupyingComponent.FindRenderers();
-            }
-            if (this.imageData == null)
-            {
-                return false;
-            }
-            if (this.imageData.Length != 0)
-            {
-                // Create a new material from our data.
-                Material mat = CustomFlags.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
-                // If the creation fails, return false to signify.
-                if (!mat)
-                {
-                    return false;
-                }
-
-                // Replace the material for the correct renderer.
-                if (this.occupyingComponent.renderers.Length == 1)
-                {
-                    this.occupyingComponent.renderers[0].material = mat;
-                }
-                else
-                {
-                    this.occupyingComponent.renderers[1].material = mat;
-                }
-            }
-            else
-            {
-                // If we are here, use the default flag material.
-
-                // Replace the material for the correct renderer.
-                if (this.occupyingComponent.renderers.Length == 1)
-                {
-                    this.occupyingComponent.renderers[0].material = CustomFlags.instance.defaultMaterials[this.CustomBlockType];
-                }
-                else
-                {
-                    this.occupyingComponent.renderers[1].material = CustomFlags.instance.defaultMaterials[this.CustomBlockType];
-                }
-            }
-
-            this.rendererPatched = true;
-            this.GetComponent<CustomBlock_Network>()?.BroadcastChange(this.imageData);
-            return true;
-        }
-    }
-
-    public class Block_CustomSail : Block_CustomBlock_Base
-    {
-        public override CustomFlags.BlockType CustomBlockType
-        {
-            get
-            {
-                return CustomFlags.BlockType.SAIL;
-            }
-        }
-
-        // We need to add sail data to this RGD.
-        public override RGD Serialize_Save()
-        {
-            RGD_Storage rgd = base.Serialize_Save() as RGD_Storage;
-            // Attach our data to the existing save data.
-            rgd.isOpen = this.GetComponent<Sail>().open;
-            // Doing a little data abusing here.
-            rgd.storageObjectIndex = BitConverter.ToUInt32(BitConverter.GetBytes(this.GetComponent<Sail>().LocalRotation), 0);
-
-            return rgd;
-        }
-
-        /*
-         * Attempt to load the new data into the renderer, returning whether it
-         * succeeded.
-         */
-        protected override bool PatchRenderer()
-        {
-            if (!this.occupyingComponent)
-            {
-                this.occupyingComponent = this.GetComponent<OccupyingComponent>();
-                this.occupyingComponent.FindRenderers();
-            }
-            if (this.imageData == null)
-            {
-                return false;
-            }
-            if (this.imageData.Length != 0)
-            {
-                // Create a new material from our data.
-                Material mat = CustomFlags.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
-                // If the creation fails, return false to signify.
-                if (!mat)
-                {
-                    return false;
-                }
-
-                // Replace the material.
-                this.occupyingComponent.renderers[1].material = mat;
-            }
-            else
-            {
-                // If we are here, use the default sail material.
-                this.occupyingComponent.renderers[1].material = CustomFlags.instance.defaultMaterials[this.CustomBlockType];
-            }
-
-            this.rendererPatched = true;
-            this.GetComponent<CustomSail_Network>()?.BroadcastChange(this.imageData);
-            return true;
-        }
-    }
 
     [HarmonyPatch(typeof(RGD_Block), "RestoreBlock")]
     public class Patch_RestoreBlock
