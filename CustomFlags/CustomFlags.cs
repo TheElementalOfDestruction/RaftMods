@@ -1,5 +1,6 @@
 using HarmonyLib;
 using I2.Loc;
+using Steamworks;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -42,23 +43,38 @@ namespace DestinyCustomFlags
         public static readonly int CUSTOM_BLOCK_ID_MAX = CUSTOM_RUG_SMALL_ITEM_ID;
         public static readonly Dictionary<BlockType, (int, int)> LOCATIONS = new Dictionary<BlockType, (int, int)>()
         {
+            { BlockType.NONE, (0, 0) },
             { BlockType.BED, (5, 5) },
             { BlockType.CURTAIN_H, (4, 132) },//
             { BlockType.CURTAIN_V, (4, 132) },//
-            { BlockType.FLAG, (253, 768) },
+            { BlockType.FLAG, (256, 770) },
             { BlockType.RUG_BIG, (7, 7) },
-            { BlockType.RUG_SMALL, (637, 964) },
-            { BlockType.SAIL, (4, 132) },
+            { BlockType.RUG_SMALL, (632, 712) },
+            { BlockType.SAIL, (3, 132) },
         };
         public static readonly Dictionary<BlockType, (int, int)> SIZES = new Dictionary<BlockType, (int, int)>()
         {
-            { BlockType.BED, (682, 959) },
+            { BlockType.NONE, (0, 0) },
+            { BlockType.BED, (959, 682) },
             { BlockType.CURTAIN_H, (4, 132) },//
             { BlockType.CURTAIN_V, (4, 132) },//
-            { BlockType.FLAG, (381, 256) },
+            { BlockType.FLAG, (377, 252) },
             { BlockType.RUG_BIG, (627, 330) },
             { BlockType.RUG_SMALL, (385, 253) },
-            { BlockType.SAIL, (792, 674) },
+            { BlockType.SAIL, (794, 674) },
+        };
+        // Dictionary to tell what axis to mirror images on. Result is a tuple
+        // of whether to mirror the x and whether to mirror the y.
+        public static readonly Dictionary<BlockType, (bool, bool)> MIRROR = new Dictionary<BlockType, (bool, bool)>()
+        {
+            { BlockType.NONE, (false, false) },
+            { BlockType.BED, (true, true) },
+            { BlockType.CURTAIN_H, (false, false) },//
+            { BlockType.CURTAIN_V, (false, false) },//
+            { BlockType.FLAG, (false, false) },
+            { BlockType.RUG_BIG, (false, false) },
+            { BlockType.RUG_SMALL, (false, false) },
+            { BlockType.SAIL, (true, false) },
         };
 
         public static CustomFlags instance;
@@ -148,12 +164,12 @@ namespace DestinyCustomFlags
 
             // Create the custom block item bases.
             this.customItems = new Item_Base[] {
-                //this.CreateCustomBedItem(),
+                this.CreateCustomBedItem(),
                 //this.CreateCustomCurtainHItem(),
                 //this.CreateCustomCurtainVItem(),
                 this.CreateCustomFlagItem(),
-                //this.CreateCustomRugBigItem(),
-                //this.CreateCustomRugSmallItem(),
+                this.CreateCustomRugBigItem(),
+                this.CreateCustomRugSmallItem(),
                 this.CreateCustomSailItem(),
             };
 
@@ -202,7 +218,7 @@ namespace DestinyCustomFlags
             Debug.Log($"[{modInfo.name}][DEBUG]: {message}");
         }
 
-        public static void OpenCustomFlagsMenu(Block_CustomBlock_Base cf)
+        public static void OpenCustomFlagsMenu(ICustomBlock cf)
         {
             CustomFlags.cfMenu.ShowMenu(cf);
         }
@@ -226,6 +242,7 @@ namespace DestinyCustomFlags
         private void AddBaseTextures(BlockType bt, Material originalMat, string texture, string normal, string paint)
         {
             Texture2D insertTex = new Texture2D(SIZES[bt].Item1, SIZES[bt].Item2);
+            insertTex.wrapMode = TextureWrapMode.Clamp;
 
             Texture2D[] add = new Texture2D[3];
 
@@ -303,9 +320,9 @@ namespace DestinyCustomFlags
         private Material PrepareMaterial(BlockType bt)
         {
             // Load the textures.
-            Texture2D diffuse = new Texture2D(1024, 1024);
-            Texture2D paint = new Texture2D(1024, 1024);
-            Texture2D normal = new Texture2D(1024, 1024);
+            Texture2D diffuse = new Texture2D(this.baseTextures[bt].width, this.baseTextures[bt].height, this.baseTextures[bt].format, false);
+            Texture2D paint = new Texture2D(this.basePaints[bt].width, this.basePaints[bt].height, this.basePaints[bt].format, false);
+            Texture2D normal = new Texture2D(this.baseNormals[bt].width, this.baseNormals[bt].height, this.baseNormals[bt].format, false);
 
             Graphics.CopyTexture(this.baseTextures[bt], diffuse);
             Graphics.CopyTexture(this.baseNormals[bt], normal);
@@ -362,7 +379,10 @@ namespace DestinyCustomFlags
 
             // Setup the recipe.
             customBlock.SetRecipe(recipe, craftCat, 1, false, data[2], 1);
-            Traverse.Create(customBlock.settings_recipe).Field("_hiddenInResearchTable").SetValue(false);
+            var trav = Traverse.Create(customBlock.settings_recipe);
+            trav.Field("_hiddenInResearchTable").SetValue(false);
+            trav.Field("skins").SetValue(new Item_Base[0]);
+            trav.Field("baseSkinItem").SetValue(null);
 
             // Set the display stuff.
             customBlock.settings_Inventory.DisplayName = data[1];
@@ -398,13 +418,17 @@ namespace DestinyCustomFlags
                     blocks[i] = cb;
                     DestroyImmediate(blockPrefab);
                     cb.gameObject.AddComponent<RaycastInteractable>();
-                    var c = cb.gameObject.AddComponent<BoxCollider>();
-                    c.size = bbSize;
-                    c.center = bbCenter;
+                    if (bbSize != Vector3.zero)
+                    {
+                        var c = cb.gameObject.AddComponent<BoxCollider>();
+                        c.size = bbSize;
+                        c.center = bbCenter;
 
-                    c.isTrigger = true;
-                    c.enabled = true;
-                    c.gameObject.layer = 10;
+                        c.isTrigger = true;
+                        c.enabled = true;
+                        c.gameObject.layer = 10;
+                    }
+
                     cb.networkedBehaviour = cb.gameObject.AddComponent<NetworkClass>();
                     cb.networkType = NetworkType.NetworkBehaviour;
 
@@ -435,9 +459,45 @@ namespace DestinyCustomFlags
                 "Custom Bed",
                 "CustomBed",
                 "Custom Bed",
-                "A customizable bed"
+                "A customizable bed."
             };
-            return this.CreateGenericCustomItem<Block_CustomBed, CustomBlock_Network>(BED_ID, CUSTOM_BED_ITEM_ID, data, new Vector3(), new Vector3(), recipe, CraftingCategory.Other);
+            return this.CreateGenericCustomItem<Block_CustomBed, CustomBlock_Network>(BED_ID, CUSTOM_BED_ITEM_ID, data, Vector3.zero, Vector3.zero, recipe, CraftingCategory.Other);
+        }
+
+        private Item_Base CreateCustomCurtainHItem()
+        {
+            var recipe = new[] {
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(21) }, 10),
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 20),
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(95) }, 14),
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(20) }, 9)
+            };
+            var data = new[] {
+                "destiny_CustomCurtainH",
+                "Custom Curtain (Horizontal)",
+                "CustomCurtains",
+                "Custom Curtains",
+                "A customizable curtain."
+            };
+            return this.CreateGenericCustomItem<Block_CustomCurtainH, CustomBlock_Network>(CURTAIN_HORIZONTAL_ID, CUSTOM_CURTAIN_H_ITEM_ID, data, Vector3.zero, Vector3.zero, recipe, CraftingCategory.Decorations);
+        }
+
+        private Item_Base CreateCustomCurtainVItem()
+        {
+            var recipe = new[] {
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(21) }, 10),
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 20),
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(95) }, 14),
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(20) }, 9)
+            };
+            var data = new[] {
+                "destiny_CustomCurtainV",
+                "Custom Curtain (Vertical)",
+                "CustomCurtains",
+                "Custom Curtains",
+                "A customizable curtain."
+            };
+            return this.CreateGenericCustomItem<Block_CustomCurtainV, CustomBlock_Network>(CURTAIN_VERTICAL_ID, CUSTOM_CURTAIN_V_ITEM_ID, data, Vector3.zero, Vector3.zero, recipe, CraftingCategory.Decorations);
         }
 
         /*
@@ -546,6 +606,38 @@ namespace DestinyCustomFlags
             return customFlag;
         }
 
+        private Item_Base CreateCustomRugBigItem()
+        {
+            var recipe = new[] {
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 2),
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(22) }, 1),
+            };
+            var data = new[] {
+                "destiny_CustomRugBig",
+                "Custom Rug (Big)",
+                "CustomRugs",
+                "Custom Rugs",
+                "A customizable rug."
+            };
+            return this.CreateGenericCustomItem<Block_CustomRugBig, CustomBlock_Network>(RUG_BIG_ID, CUSTOM_RUG_BIG_ITEM_ID, data, new Vector3(1.4797308f, 0.14399316f, 2.736644f), new Vector3(0, 0.005513929f, 0), recipe, CraftingCategory.Other);
+        }
+
+        private Item_Base CreateCustomRugSmallItem()
+        {
+            var recipe = new[] {
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 2),
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(22) }, 1),
+            };
+            var data = new[] {
+                "destiny_CustomRugSmall",
+                "Custom Rug (Small)",
+                "CustomRugs",
+                "Custom Rugs",
+                "A customizable rug."
+            };
+            return this.CreateGenericCustomItem<Block_CustomRugSmall, CustomBlock_Network>(RUG_SMALL_ID, CUSTOM_RUG_SMALL_ITEM_ID, data, new Vector3(0.8902238f, 0.12493733f, 1.32783f), new Vector3(0, 0.005513929f, 0), recipe, CraftingCategory.Other);
+        }
+
         /*
          * Finds the base sail item and uses it to create a new custom sail
          * item.
@@ -631,114 +723,6 @@ namespace DestinyCustomFlags
         }
 
         /*
-         * Finds the base flag we will be using and creates a new item for our
-         * custom flag.
-         */
-        private Item_Base CreateCustomCurtainHItem()
-        {
-            // Create a clone of the regular flag.
-            Item_Base originalItem = ItemManager.GetItemByIndex(FLAG_ID);
-            Item_Base customFlag = ScriptableObject.CreateInstance<Item_Base>();
-            customFlag.Initialize(CUSTOM_FLAG_ITEM_ID, "destiny_CustomFlag", 1);
-            customFlag.settings_buildable = originalItem.settings_buildable.Clone();
-            customFlag.settings_consumeable = originalItem.settings_consumeable.Clone();
-            customFlag.settings_cookable = originalItem.settings_cookable.Clone();
-            customFlag.settings_equipment = originalItem.settings_equipment.Clone();
-            customFlag.settings_Inventory = originalItem.settings_Inventory.Clone();
-            customFlag.settings_recipe = originalItem.settings_recipe.Clone();
-            customFlag.settings_usable = originalItem.settings_usable.Clone();
-
-            Block[] blocks = customFlag.settings_buildable.GetBlockPrefabs().Clone() as Block[];
-
-            // Set the block to not be paintable.
-            Traverse.Create(customFlag.settings_buildable).Field("primaryPaintAxis").SetValue(Axis.None);
-
-            // Setup the recipe.
-            customFlag.SetRecipe(new[]
-                {
-                    new CostMultiple(new[] { ItemManager.GetItemByIndex(21) }, 4),
-                    new CostMultiple(new[] { ItemManager.GetItemByIndex(23) }, 2),
-                    new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 6)
-                }, CraftingCategory.Decorations, 1, false, "CustomFlag", 1);
-            Traverse.Create(customFlag.settings_recipe).Field("_hiddenInResearchTable").SetValue(false);
-
-            // Set the display stuff.
-            customFlag.settings_Inventory.DisplayName = "Custom Flag";
-            customFlag.settings_Inventory.Description = "A customizable flag.";
-
-            // Localization stuff.
-            customFlag.settings_Inventory.LocalizationTerm = "Item/destiny_CustomFlag";
-            var language = new LanguageSourceData()
-            {
-                mDictionary = new Dictionary<string, TermData>
-                {
-                    ["Item/destiny_CustomFlag"] = new TermData() { Languages = new[] { "Custom Flag@A customizable flag." } },
-                    ["CraftingSub/CustomFlag"] = new TermData() { Languages = new[] { "Custom Flag" } }
-                },
-                mLanguages = new List<LanguageData> { new LanguageData() { Code = "en", Name = "English" } }
-            };
-            LocalizationManager.Sources.Add(language);
-            Traverse.Create(typeof(LocalizationManager)).Field("OnLocalizeEvent").GetValue<LocalizationManager.OnLocalizeCallback>().Invoke();
-
-
-            // Now, we need to replace Block with Block_CustomFlag;
-            for (int i = 0; i < blocks.Length; ++i)
-            {
-                if (blocks[i])
-                {
-                    // Based on some of Aidan's code.
-                    var flagPrefab = Instantiate(blocks[i], this.prefabHolder, false);
-                    flagPrefab.name = $"Block_CustomFlag_{i}";
-                    var cf = flagPrefab.gameObject.AddComponent<Block_CustomFlag>();
-                    cf.CopyFieldsOf(flagPrefab);
-                    cf.ReplaceValues(flagPrefab, cf);
-                    flagPrefab.ReplaceValues(originalItem, customFlag);
-                    blocks[i] = cf;
-                    DestroyImmediate(flagPrefab);
-                    cf.gameObject.AddComponent<RaycastInteractable>();
-                    var c = cf.gameObject.AddComponent<BoxCollider>();
-                    switch (cf.dpsType)
-                    {
-                        case DPS.Floor:
-                            c.size = new Vector3(0.292296f, 3.260565f, 0.292296f);
-                            c.center = new Vector3(0, 1.372016f, 0);
-                            break;
-                        case DPS.Ceiling:
-                            c.size = new Vector3(1.204021f, 1.826855f, 0.2007985f);
-                            c.center = new Vector3(0, -1.012313f, 0);
-                            break;
-                        case DPS.Wall:
-                            c.size = new Vector3(0.214351f, 1.739691f, 1.0067628f);
-                            c.center = new Vector3(0, 0, 0.5f);
-                            break;
-                        default:
-                            c.size = Vector3.zero;
-                            c.center = Vector3.zero;
-                            break;
-                    }
-
-                    c.isTrigger = true;
-                    c.enabled = true;
-                    c.gameObject.layer = 10;
-                    cf.networkedBehaviour = cf.gameObject.AddComponent<CustomBlock_Network>();
-                    cf.networkType = NetworkType.NetworkBehaviour;
-
-                    cf.ImageData = new byte[0];
-                }
-            }
-
-            Traverse.Create(customFlag.settings_buildable).Field("blockPrefabs").SetValue(blocks);
-
-            foreach (var q in Resources.FindObjectsOfTypeAll<SO_BlockQuadType>())
-                if (q.AcceptsBlock(originalItem))
-                    Traverse.Create(q).Field("acceptableBlockTypes").GetValue<List<Item_Base>>().Add(customFlag);
-
-            return customFlag;
-        }
-
-
-
-        /*
          * Overwrites the data in the specified area with the specified texture.
          * This simplifies the calls to work with a material instead of a
          * Texture2D for the destination.
@@ -763,7 +747,7 @@ namespace DestinyCustomFlags
          */
         private static void PlaceImageInTexture(Texture2D dest, Texture2D src, BlockType bt)
         {
-            dest.Edit(src, LOCATIONS[bt].Item1, LOCATIONS[bt].Item2, SIZES[bt].Item1, SIZES[bt].Item2);
+            dest.Edit(src, LOCATIONS[bt].Item1, LOCATIONS[bt].Item2, SIZES[bt].Item1, SIZES[bt].Item2, bt);
         }
 
         /*
@@ -813,7 +797,9 @@ namespace DestinyCustomFlags
             FLAG,
             RUG_BIG,
             RUG_SMALL,
-            SAIL
+            SAIL,
+            // Special value used for the edit function to not mirror.
+            NONE
         }
     }
 
@@ -827,54 +813,79 @@ namespace DestinyCustomFlags
             // Make sure it is one of our blocks.
             if (__instance.BlockIndex >= CustomFlags.CUSTOM_BLOCK_ID_MIN && __instance.BlockIndex <= CustomFlags.CUSTOM_BLOCK_ID_MAX)
             {
-                Block_CustomBlock_Base cb = block as Block_CustomBlock_Base;
                 RGD_Storage rgd = __instance as RGD_Storage;
-                if (cb != null && rgd != null)
+                if (rgd != null)
                 {
-                    if (Raft_Network.IsHost || !CustomFlags.IgnoreFlagMessages)
+                    ICustomBlock cb = block as ICustomBlock;
+                    if (cb != null)
                     {
-                        byte[] imageData = Convert.FromBase64String(rgd.slots[0].exclusiveString);
-                        if (rgd.slots[0].itemAmount == 0)
+                        if (Raft_Network.IsHost || !CustomFlags.IgnoreFlagMessages)
                         {
-                            CustomFlags.DebugLog("Found flag with old save data. Updating to new save system.");
-                            // Handle older saves with a different form of image
-                            // save data.
-                            if (Raft_Network.IsHost)
+                            byte[] imageData = Convert.FromBase64String(rgd.slots[0].exclusiveString);
+                            if (rgd.slots[0].itemAmount == 0)
                             {
-                                imageData = imageData.SanitizeImage(cb.CustomBlockType);
+                                CustomFlags.DebugLog("Found flag with old save data. Updating to new save system.");
+                                // Handle older saves with a different form of image
+                                // save data.
+                                if (Raft_Network.IsHost)
+                                {
+                                    imageData = imageData.SanitizeImage(cb.GetBlockType());
+                                }
+                                else
+                                {
+                                    // Small protection against unsafe save data
+                                    // from remote host.
+                                    imageData = new byte[0];
+                                }
                             }
-                            else
+                            if (imageData != null)
                             {
-                                // Small protection against unsafe save data
-                                // from remote host.
-                                imageData = new byte[0];
+                                cb.SetSendUpdates(false);
+                                cb.SetImageData(imageData);
+                                cb.SetSendUpdates(true);
                             }
                         }
-                        if (imageData != null)
-                        {
-                            cb.ImageData = imageData;
-                        }
-                    }
 
-                    // Handle the custom sail.
-                    if (cb is Block_CustomSail)
-                    {
-                        Sail sail = block.GetComponent<Sail>();
-                        if (rgd.isOpen)
+                        // Handle the custom sail.
+                        if (cb is Block_CustomSail)
                         {
-                            sail?.Open();
+                            Sail sail = block.GetComponent<Sail>();
+                            if (rgd.isOpen)
+                            {
+                                sail?.Open();
+                            }
+                            sail?.SetRotation(BitConverter.ToSingle(BitConverter.GetBytes(rgd.storageObjectIndex), 0));
                         }
-                        sail?.SetRotation(BitConverter.ToSingle(BitConverter.GetBytes(rgd.storageObjectIndex), 0));
                     }
                 }
             }
         }
     }
 
+    /*
+    [HarmonyPatch(typeof(SteamNetworking), "SendP2PPacket")]
+    public class Patch_Steam
+    {
+        public static void Prefix(CSteamID steamIDRemote, uint cubData)
+        {
+            Debug.Log($"Got packet of length {cubData}");
+            P2PSessionState_t state = new P2PSessionState_t();
+            SteamNetworking.GetP2PSessionState(steamIDRemote, out state);
+            Debug.Log($"Bytes to send: {state.m_nBytesQueuedForSend}");
+        }
+
+        public static void Postfix(CSteamID steamIDRemote)
+        {
+            P2PSessionState_t state = new P2PSessionState_t();
+            SteamNetworking.GetP2PSessionState(steamIDRemote, out state);
+            Debug.Log($"Bytes to send: {state.m_nBytesQueuedForSend}");
+        }
+    }*/
+
     static class Texture2DExtension
     {
         // How is Aidan so amazing?
-        public static Texture2D CreateReadable(this Texture2D source, Rect? copyArea = null, RenderTextureFormat format = RenderTextureFormat.Default, RenderTextureReadWrite readWrite = RenderTextureReadWrite.Default, TextureFormat? targetFormat = null, bool mipChain = true)
+        public static Texture2D CreateReadable(this Texture2D source, Rect? copyArea = null, RenderTextureFormat format = RenderTextureFormat.Default, RenderTextureReadWrite readWrite = RenderTextureReadWrite.Default, TextureFormat? targetFormat = null, bool mipChain = false)
         {
             var temp = RenderTexture.GetTemporary(source.width, source.height, 0, format, readWrite);
             Graphics.Blit(source, temp);
@@ -892,13 +903,19 @@ namespace DestinyCustomFlags
         }
 
         // Aidan is a god.
-        public static void Edit(this Texture2D baseImg, Texture2D overlay, int xOffset, int yOffset, int targetX, int targetY)
+        public static void Edit(this Texture2D baseImg, Texture2D overlay, int xOffset, int yOffset, int targetX, int targetY, CustomFlags.BlockType bt = CustomFlags.BlockType.NONE)
         {
-            var w = targetX - 1;
-            var h = targetY - 1;
-            for (var x = 0; x <= w; x++)
-                 for (var y = 0; y <= h; y++)
-                      baseImg.SetPixel(xOffset + x, yOffset + y, baseImg.GetPixel(x, y).Overlay(overlay.GetPixelBilinear((float)x / w, (float)y / h)));
+            var w = targetX;
+            var h = targetY;
+            var mirrorX = CustomFlags.MIRROR[bt].Item1 ? 1 : 0;
+            var mirrorY = CustomFlags.MIRROR[bt].Item2 ? 1 : 0;
+            for (var x = 0; x < w; x++)
+            {
+                for (var y = 0; y < h; y++)
+                {
+                    baseImg.SetPixel(xOffset + x, yOffset + y, baseImg.GetPixel(x, y).Overlay(overlay.GetPixelBilinear(Math.Abs(mirrorX - (float)x / w), Math.Abs(mirrorY - (float)y / h))));
+                }
+            }
             baseImg.Apply();
         }
 
@@ -914,6 +931,7 @@ namespace DestinyCustomFlags
             }
             // Load our plain data.
             Texture2D texOriginal = new Texture2D(1, 1);
+            texOriginal.wrapMode = TextureWrapMode.Clamp;
             if (!ImageConversion.LoadImage(texOriginal, arr))
             {
                 return new byte[0];
@@ -981,6 +999,7 @@ namespace DestinyCustomFlags
             colors.Add(currentColor);
 
             var tex = new Texture2D(width, height);
+            tex.wrapMode = TextureWrapMode.Clamp;
             tex.SetPixels32(colors.ToArray());
             return tex;
         }

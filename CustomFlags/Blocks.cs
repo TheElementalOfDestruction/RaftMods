@@ -4,12 +4,42 @@ using UnityEngine;
 
 namespace DestinyCustomFlags
 {
-    // Class for handling how to display a custom item.
-    public abstract class Block_CustomBlock_Base : Block, IRaycastable
+    public interface ICustomBlock
     {
+        byte[] GetImageData();
+        void SetImageData(byte[] data);
+        CustomFlags.BlockType GetBlockType();
+        void SetSendUpdates(bool state);
+    }
+
+    // Class for handling how to display a custom item.
+    public abstract class Block_CustomBlock_Base : Block, ICustomBlock, IRaycastable
+    {
+        byte[] ICustomBlock.GetImageData()
+        {
+            return this.ImageData;
+        }
+
+        void ICustomBlock.SetImageData(byte[] data)
+        {
+            this.ImageData = data;
+        }
+
+        CustomFlags.BlockType ICustomBlock.GetBlockType()
+        {
+            return this.CustomBlockType;
+        }
+
+        void ICustomBlock.SetSendUpdates(bool state)
+        {
+            this.sendUpdates = state;
+        }
+
         protected byte[] imageData;
         protected bool rendererPatched = false;
         protected bool showingText;
+
+        public bool sendUpdates = true;
 
         public byte[] ImageData
         {
@@ -76,7 +106,10 @@ namespace DestinyCustomFlags
             }
 
             this.rendererPatched = true;
-            this.GetComponent<CustomBlock_Network>()?.BroadcastChange(this.imageData);
+            if (this.sendUpdates)
+            {
+                this.GetComponent<CustomBlock_Network>()?.BroadcastChange(this.imageData);
+            }
             return true;
         }
 
@@ -135,9 +168,167 @@ namespace DestinyCustomFlags
 
 
 
-    public class Block_CustomBed : Bed, IRaycastable
+    public class Block_CustomBed : Bed, ICustomBlock, IRaycastable
     {
+        byte[] ICustomBlock.GetImageData()
+        {
+            return this.ImageData;
+        }
 
+        void ICustomBlock.SetImageData(byte[] data)
+        {
+            this.ImageData = data;
+        }
+
+        CustomFlags.BlockType ICustomBlock.GetBlockType()
+        {
+            return this.CustomBlockType;
+        }
+
+        void ICustomBlock.SetSendUpdates(bool state)
+        {
+            this.sendUpdates = state;
+        }
+
+        protected byte[] imageData;
+        protected bool rendererPatched = false;
+        protected bool showingText;
+
+        public bool sendUpdates = true;
+
+        public byte[] ImageData
+        {
+            get
+            {
+                return this.imageData;
+            }
+            set
+            {
+                // Backup our data incase the patch function fails.
+                byte[] oldData = this.imageData;
+                this.imageData = value;
+                if (!this.PatchRenderer())
+                {
+                    this.imageData = oldData;
+                }
+            }
+        }
+
+        public CustomFlags.BlockType CustomBlockType
+        {
+            get
+            {
+                return CustomFlags.BlockType.BED;
+            }
+        }
+
+        void Start()
+        {
+            if (!this.rendererPatched)
+            {
+                this.ImageData = new byte[0];
+            }
+        }
+
+        /*
+         * Attempt to load the new data into the renderer, returning whether it
+         * succeeded.
+         */
+        protected virtual bool PatchRenderer()
+        {
+            if (!this.occupyingComponent)
+            {
+                this.occupyingComponent = this.GetComponent<OccupyingComponent>();
+                this.occupyingComponent.FindRenderers();
+            }
+            if (this.imageData == null)
+            {
+                return false;
+            }
+            if (this.imageData.Length != 0)
+            {
+                // Create a new material from our data.
+                Material mat = CustomFlags.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
+                // If the creation fails, return false to signify.
+                if (!mat)
+                {
+                    return false;
+                }
+
+                // Replace the material.
+                this.occupyingComponent.renderers[1].material = mat;
+                this.occupyingComponent.renderers[2].material = mat;
+            }
+            else
+            {
+                // If we are here, use the default flag material.
+
+                // Replace the material.
+                this.occupyingComponent.renderers[1].material = CustomFlags.instance.defaultMaterials[this.CustomBlockType];
+                this.occupyingComponent.renderers[2].material = CustomFlags.instance.defaultMaterials[this.CustomBlockType];
+            }
+
+            this.rendererPatched = true;
+            if (this.sendUpdates)
+            {
+                this.GetComponent<CustomBlock_Network>()?.BroadcastChange(this.imageData);
+            }
+            return true;
+        }
+
+        public override RGD Serialize_Save()
+        {
+            var r = CustomFlags.CreateObject<RGD_Storage>();
+            r.CopyFieldsOf(new RGD_Block(RGDType.Block, this));
+            r.slots = new RGD_Slot[] { CustomFlags.CreateObject<RGD_Slot>() };
+            r.slots[0].exclusiveString = Convert.ToBase64String(this.ImageData);
+            r.slots[0].itemAmount = 1;
+            return r;
+        }
+
+        public override RGD_Block GetBlockCreationData()
+        {
+            return this.Serialize_Save() as RGD_Block;
+        }
+
+        void IRaycastable.OnIsRayed()
+        {
+            base.OnIsRayed();
+            if (!this.hasBeenPlaced || !CustomFlags.EditorEnabled || CustomFlags.InteractKey == KeyCode.None)
+            {
+                return;
+            }
+            CanvasHelper canvas = ComponentManager<CanvasHelper>.Value;
+            if (CanvasHelper.ActiveMenu != MenuType.None || !Helper.LocalPlayerIsWithinDistance(transform.position, Player.UseDistance))
+            {
+                if (this.showingText)
+                {
+                    canvas.displayTextManager.HideDisplayTexts();
+                    this.showingText = false;
+                }
+            }
+            else
+            {
+                canvas.displayTextManager.ShowText($"Press {CustomFlags.InteractKey} to open the edit menu.", CustomFlags.InteractKey, 0, 0, false);
+                this.showingText = true;
+                if (Input.GetKeyDown(CustomFlags.InteractKey))
+                {
+                    CustomFlags.OpenCustomFlagsMenu(this);
+                }
+            }
+        }
+
+        void IRaycastable.OnRayEnter() {}
+
+        void IRaycastable.OnRayExit()
+        {
+            base.OnRayExit();
+            if (this.showingText)
+            {
+                ComponentManager<CanvasHelper>.Value.displayTextManager.HideDisplayTexts();
+                this.showingText = false;
+            }
+        }
     }
 
 
@@ -261,7 +452,10 @@ namespace DestinyCustomFlags
             }
 
             this.rendererPatched = true;
-            this.GetComponent<CustomBlock_Network>()?.BroadcastChange(this.imageData);
+            if (this.sendUpdates)
+            {
+                this.GetComponent<CustomBlock_Network>()?.BroadcastChange(this.imageData);
+            }
             return true;
         }
     }
@@ -351,7 +545,10 @@ namespace DestinyCustomFlags
             }
 
             this.rendererPatched = true;
-            this.GetComponent<CustomSail_Network>()?.BroadcastChange(this.imageData);
+            if (this.sendUpdates)
+            {
+                this.GetComponent<CustomSail_Network>()?.BroadcastChange(this.imageData);
+            }
             return true;
         }
     }

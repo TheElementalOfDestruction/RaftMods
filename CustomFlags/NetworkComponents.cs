@@ -23,23 +23,27 @@ namespace DestinyCustomFlags
 
         public override bool Deserialize(Message_NetworkBehaviour msg, CSteamID remoteID)
         {
-            CustomFlags.DebugLog($"Received Message: {msg}");
             var message = msg as Message_Animal_AnimTriggers;
-            if ((int)msg.Type == -75 && message != null && message.anim_triggers.Length == 1)
+            if ((int)msg.Type == -75 && message != null && message.anim_triggers.Length == 1 && remoteID != ComponentManager<Raft_Network>.Value.LocalSteamID)
             {
                 if (!CustomFlags.IgnoreFlagMessages && !(Raft_Network.IsHost && CustomFlags.PreventChanges))
                 {
                     byte[] data = Convert.FromBase64String(message.anim_triggers[0]);
                     if (data != null)
                     {
-                        this.GetComponent<Block_CustomBlock_Base>().ImageData = data;
-                        return true;
+                        var block = this.GetComponent<ICustomBlock>();
+                        if (block != null)
+                        {
+                            // This is how we handle resending to everyone else if
+                            // the user is the host. Otherwise, we don't send
+                            // anything for the update.
+                            block.SetSendUpdates(Raft_Network.IsHost);
+                            block.SetImageData(data);
+                            block.SetSendUpdates(true);
+                        }
                     }
                 }
-                else
-                {
-                    return false;
-                }
+                return false;
             }
             return base.Deserialize(msg, remoteID);
         }
@@ -48,10 +52,22 @@ namespace DestinyCustomFlags
         {
             if (LoadSceneManager.IsGameSceneLoaded && !CustomFlags.IgnoreFlagMessages)
             {
-                var msg = new Message_Animal_AnimTriggers((Messages)(-75), ComponentManager<Raft_Network>.Value.NetworkIDManager, this.ObjectIndex, new string[] { Convert.ToBase64String(data) });
-                ComponentManager<Raft_Network>.Value.RPC(msg, Target.All, EP2PSend.k_EP2PSendReliable, NetworkChannel.Channel_Game);
+                var msg = new Message_Animal_AnimTriggers((Messages)(-75), this, this.ObjectIndex, new string[] { Convert.ToBase64String(data) });
+                ComponentManager<Raft_Network>.Value.RPC(msg, Target.Other, EP2PSend.k_EP2PSendReliable, NetworkChannel.Channel_Game);
             }
         }
+
+        /*
+        private IEnumerator SendMessage(Message_Animal_AnimTriggers msg)
+        {
+            Packet_Single packet = new PacketSingle(EP2PSend.k_EP2PSendReliable, msg);
+            BinaryFormatter bin = new BinaryFormatter();
+            MemoryStream mem = new MemorySteam();
+            bin.Serialize(mem, packet);
+
+            Raft_Network.Message_FragmentedPacket[] messages;
+        }
+        */
     }
 
 
@@ -80,21 +96,26 @@ namespace DestinyCustomFlags
         public override bool Deserialize(Message_NetworkBehaviour msg, CSteamID remoteID)
         {
             var message = msg as Message_Animal_AnimTriggers;
-            if ((int)msg.Type == -75 && message != null && message.anim_triggers.Length == 1)
+            if ((int)msg.Type == -75 && message != null && message.anim_triggers.Length == 1 && remoteID != ComponentManager<Raft_Network>.Value.LocalSteamID)
             {
-                if (!CustomFlags.IgnoreFlagMessages)
+                if (!CustomFlags.IgnoreFlagMessages && !(Raft_Network.IsHost && CustomFlags.PreventChanges))
                 {
                     byte[] data = Convert.FromBase64String(message.anim_triggers[0]);
                     if (data != null)
                     {
-                        this.GetComponent<Block_CustomBlock_Base>().ImageData = data;
-                        return true;
+                        var block = this.GetComponent<ICustomBlock>();
+                        if (block != null)
+                        {
+                            // This is how we handle resending to everyone else if
+                            // the user is the host. Otherwise, we don't send
+                            // anything for the update.
+                            block.SetSendUpdates(Raft_Network.IsHost);
+                            block.SetImageData(data);
+                            block.SetSendUpdates(true);
+                        }
                     }
                 }
-                else
-                {
-                    return false;
-                }
+                return false;
             }
             return base.Deserialize(msg, remoteID);
         }
@@ -103,8 +124,8 @@ namespace DestinyCustomFlags
         {
             if (LoadSceneManager.IsGameSceneLoaded && !CustomFlags.IgnoreFlagMessages)
             {
-                var msg = new Message_Animal_AnimTriggers((Messages)(-75), ComponentManager<Raft_Network>.Value.NetworkIDManager, this.ObjectIndex, new string[] { Convert.ToBase64String(data) });
-                ComponentManager<Raft_Network>.Value.RPC(msg, Target.All, EP2PSend.k_EP2PSendReliable, (NetworkChannel)17732);
+                var msg = new Message_Animal_AnimTriggers((Messages)(-75), this, this.ObjectIndex, new string[] { Convert.ToBase64String(data) });
+                ComponentManager<Raft_Network>.Value.RPC(msg, Target.Other, EP2PSend.k_EP2PSendReliable, NetworkChannel.Channel_Game);
             }
         }
     }

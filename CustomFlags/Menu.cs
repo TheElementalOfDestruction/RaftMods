@@ -12,7 +12,7 @@ namespace DestinyCustomFlags
     {
         private CanvasGroup cg;
         private UnityEngine.UI.Image preview;
-        private Block_CustomBlock_Base currentBlock;
+        private ICustomBlock currentBlock;
         private TMPro.TMP_InputField inputField;
         private byte[] imageData;
         private bool shown;
@@ -76,6 +76,7 @@ namespace DestinyCustomFlags
             this.cg.interactable = false;
             this.cg.blocksRaycasts = false;
             this.shown = false;
+            this.inputField.readOnly = true;
             RAPI.ToggleCursor(false);
         }
 
@@ -116,8 +117,8 @@ namespace DestinyCustomFlags
                 else
                 {
                     // Success!
-                    this.imageData = handler.data.SanitizeImage(this.currentBlock.CustomBlockType);
-                    this.preview.overrideSprite = CustomFlags.CreateSpriteFromBytes(this.imageData, this.currentBlock.CustomBlockType);
+                    this.imageData = handler.data.SanitizeImage(this.currentBlock.GetBlockType());
+                    this.preview.overrideSprite = CustomFlags.CreateSpriteFromBytes(this.imageData, this.currentBlock.GetBlockType());
                 }
             }
             else
@@ -125,8 +126,8 @@ namespace DestinyCustomFlags
                 if (File.Exists(path))
                 {
                     temp = File.ReadAllBytes(path);
-                    byte[] temp2 = temp.Length > 0 ? temp.SanitizeImage(this.currentBlock.CustomBlockType) : temp;
-                    Sprite s = CustomFlags.CreateSpriteFromBytes(temp2, this.currentBlock.CustomBlockType);
+                    byte[] temp2 = temp.Length > 0 ? temp.SanitizeImage(this.currentBlock.GetBlockType()) : temp;
+                    Sprite s = CustomFlags.CreateSpriteFromBytes(temp2, this.currentBlock.GetBlockType());
                     if (temp2.Length == 0 || s == null)
                     {
                         this.HandleError("File does not contain a valid flag. Valid flag must be a PNG or JPG file.");
@@ -157,10 +158,10 @@ namespace DestinyCustomFlags
         public void SetBlockDefault()
         {
             this.imageData = new byte[0];
-            this.preview.overrideSprite = CustomFlags.instance.defaultSprites[this.currentBlock.CustomBlockType];
+            this.preview.overrideSprite = CustomFlags.instance.defaultSprites[this.currentBlock.GetBlockType()];
         }
 
-        public void ShowMenu(Block_CustomBlock_Base cb)
+        public void ShowMenu(ICustomBlock cb)
         {
             if (cb == null)
             {
@@ -171,16 +172,17 @@ namespace DestinyCustomFlags
             this.cg.blocksRaycasts = true;
             this.shown = true;
             this.currentBlock = cb;
-            this.imageData = cb.ImageData;
-            this.preview.overrideSprite = CustomFlags.CreateSpriteFromBytes(this.imageData, cb.CustomBlockType);
+            this.imageData = cb.GetImageData();
+            this.inputField.readOnly = false;
+            this.preview.overrideSprite = CustomFlags.CreateSpriteFromBytes(this.imageData, cb.GetBlockType());
             RAPI.ToggleCursor(true);
         }
 
         public void UpdateBlock()
         {
-            if (this.currentBlock)
+            if (this.currentBlock != null)
             {
-                this.currentBlock.ImageData = this.imageData;
+                this.currentBlock.SetImageData(this.imageData);
             }
             this.HideMenu();
         }
