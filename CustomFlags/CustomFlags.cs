@@ -17,11 +17,12 @@ namespace DestinyCustomFlags
 {
     public class CustomFlags : Mod
     {
-        //TODO: Raycast combine for interactable blocks.
-        // I want to implement all of the following blocks, but some may have
-        // difficulties that will need to be resolved. For example, the bed
-        // is going to need a custom class that extends the Bed class, cause
-        // the Bed class derives from Block.
+        /*
+        TODO: Currently the mod has a few missing features/problems.
+            * Already raycastable objects interfere with the menu prompt.
+            * The bed cannot be slept in.
+            * Duplication bug (probably not detecting placed properly or something).
+        */
 
         private const int BED_ID = 448; // Renderer for sheet flat is 1, occupied is 2.
         private const int CURTAIN_HORIZONTAL_ID = 447;
@@ -46,7 +47,7 @@ namespace DestinyCustomFlags
             { BlockType.NONE, (0, 0) },
             { BlockType.BED, (5, 5) },
             { BlockType.CURTAIN_H, (4, 132) },//
-            { BlockType.CURTAIN_V, (4, 132) },//
+            { BlockType.CURTAIN_V, (3, 3) },
             { BlockType.FLAG, (256, 770) },
             { BlockType.RUG_BIG, (7, 7) },
             { BlockType.RUG_SMALL, (632, 712) },
@@ -57,7 +58,7 @@ namespace DestinyCustomFlags
             { BlockType.NONE, (0, 0) },
             { BlockType.BED, (959, 682) },
             { BlockType.CURTAIN_H, (4, 132) },//
-            { BlockType.CURTAIN_V, (4, 132) },//
+            { BlockType.CURTAIN_V, (525, 496) },
             { BlockType.FLAG, (377, 252) },
             { BlockType.RUG_BIG, (627, 330) },
             { BlockType.RUG_SMALL, (385, 253) },
@@ -166,7 +167,7 @@ namespace DestinyCustomFlags
             this.customItems = new Item_Base[] {
                 this.CreateCustomBedItem(),
                 //this.CreateCustomCurtainHItem(),
-                //this.CreateCustomCurtainVItem(),
+                this.CreateCustomCurtainVItem(),
                 this.CreateCustomFlagItem(),
                 this.CreateCustomRugBigItem(),
                 this.CreateCustomRugSmallItem(),
@@ -417,16 +418,17 @@ namespace DestinyCustomFlags
                     blockPrefab.ReplaceValues(originalItem, customBlock);
                     blocks[i] = cb;
                     DestroyImmediate(blockPrefab);
-                    cb.gameObject.AddComponent<RaycastInteractable>();
                     if (bbSize != Vector3.zero)
                     {
+                        cb.gameObject.AddComponent<RaycastInteractable>();
                         var c = cb.gameObject.AddComponent<BoxCollider>();
                         c.size = bbSize;
                         c.center = bbCenter;
 
                         c.isTrigger = true;
-                        c.enabled = true;
+                        c.enabled = false;
                         c.gameObject.layer = 10;
+                        cb.onoffColliders = cb.onoffColliders.Extend(c);
                     }
 
                     cb.networkedBehaviour = cb.gameObject.AddComponent<NetworkClass>();
@@ -588,8 +590,9 @@ namespace DestinyCustomFlags
                     }
 
                     c.isTrigger = true;
-                    c.enabled = true;
+                    c.enabled = false;
                     c.gameObject.layer = 10;
+                    cf.onoffColliders = cf.onoffColliders.Extend(c);
                     cf.networkedBehaviour = cf.gameObject.AddComponent<CustomBlock_Network>();
                     cf.networkType = NetworkType.NetworkBehaviour;
 
@@ -881,6 +884,16 @@ namespace DestinyCustomFlags
             Debug.Log($"Bytes to send: {state.m_nBytesQueuedForSend}");
         }
     }*/
+
+    static class ArrayExtension
+    {
+        public static T[] Extend<T>(this T[] arr, T newElement)
+        {
+            List<T> l = new List<T>(arr);
+            l.Add(newElement);
+            return l.ToArray();
+        }
+    }
 
     static class Texture2DExtension
     {

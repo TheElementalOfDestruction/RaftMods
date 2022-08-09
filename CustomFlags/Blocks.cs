@@ -61,8 +61,9 @@ namespace DestinyCustomFlags
 
         public abstract CustomFlags.BlockType CustomBlockType { get; }
 
-        void Start()
+        protected override void Start()
         {
+            base.Start();
             if (!this.rendererPatched)
             {
                 this.ImageData = new byte[0];
@@ -222,8 +223,9 @@ namespace DestinyCustomFlags
             }
         }
 
-        void Start()
+        protected override void Start()
         {
+            base.Start();
             if (!this.rendererPatched)
             {
                 this.ImageData = new byte[0];
