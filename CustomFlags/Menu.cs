@@ -6,9 +6,9 @@ using UnityEngine;
 using UnityEngine.Networking;
 
 
-namespace DestinyCustomFlags
+namespace DestinyCustomBlocks
 {
-    public class CustomFlagsMenu : MonoBehaviour
+    public class CustomBlocksMenu : MonoBehaviour
     {
         private CanvasGroup cg;
         private UnityEngine.UI.Image preview;
@@ -61,12 +61,12 @@ namespace DestinyCustomFlags
 
         private void HandleError(ErrorType e)
         {
-            CustomFlags.Log(e);
+            CustomBlocks.Log(e);
         }
 
         private void HandleError(string e)
         {
-            CustomFlags.Log(e);
+            CustomBlocks.Log(e);
         }
 
         public void HideMenu()
@@ -118,7 +118,7 @@ namespace DestinyCustomFlags
                 {
                     // Success!
                     this.imageData = handler.data.SanitizeImage(this.currentBlock.GetBlockType());
-                    this.preview.overrideSprite = CustomFlags.CreateSpriteFromBytes(this.imageData, this.currentBlock.GetBlockType());
+                    this.preview.overrideSprite = CustomBlocks.CreateSpriteFromBytes(this.imageData, this.currentBlock.GetBlockType());
                 }
             }
             else
@@ -127,7 +127,7 @@ namespace DestinyCustomFlags
                 {
                     temp = File.ReadAllBytes(path);
                     byte[] temp2 = temp.Length > 0 ? temp.SanitizeImage(this.currentBlock.GetBlockType()) : temp;
-                    Sprite s = CustomFlags.CreateSpriteFromBytes(temp2, this.currentBlock.GetBlockType());
+                    Sprite s = CustomBlocks.CreateSpriteFromBytes(temp2, this.currentBlock.GetBlockType());
                     if (temp2.Length == 0 || s == null)
                     {
                         this.HandleError("File does not contain a valid flag. Valid flag must be a PNG or JPG file.");
@@ -158,7 +158,7 @@ namespace DestinyCustomFlags
         public void SetBlockDefault()
         {
             this.imageData = new byte[0];
-            this.preview.overrideSprite = CustomFlags.instance.defaultSprites[this.currentBlock.GetBlockType()];
+            this.preview.overrideSprite = CustomBlocks.instance.defaultSprites[this.currentBlock.GetBlockType()];
         }
 
         public void ShowMenu(ICustomBlock cb)
@@ -174,7 +174,7 @@ namespace DestinyCustomFlags
             this.currentBlock = cb;
             this.imageData = cb.GetImageData();
             this.inputField.readOnly = false;
-            this.preview.overrideSprite = CustomFlags.CreateSpriteFromBytes(this.imageData, cb.GetBlockType());
+            this.preview.overrideSprite = CustomBlocks.CreateSpriteFromBytes(this.imageData, cb.GetBlockType());
             RAPI.ToggleCursor(true);
         }
 

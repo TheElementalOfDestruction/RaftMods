@@ -13,15 +13,14 @@ using System.Text;
 using UnityEngine;
 
 
-namespace DestinyCustomFlags
+namespace DestinyCustomBlocks
 {
-    public class CustomFlags : Mod
+    public class CustomBlocks : Mod
     {
         /*
         TODO: Currently the mod has a few missing features/problems.
             * Already raycastable objects interfere with the menu prompt.
-            * The bed cannot be slept in.
-            * Duplication bug (probably not detecting placed properly or something).
+            * Allow for turning on and off mipmaps.
         */
 
         private const int BED_ID = 448; // Renderer for sheet flat is 1, occupied is 2.
@@ -46,7 +45,7 @@ namespace DestinyCustomFlags
         {
             { BlockType.NONE, (0, 0) },
             { BlockType.BED, (5, 5) },
-            { BlockType.CURTAIN_H, (4, 132) },//
+            { BlockType.CURTAIN_H, (-1, -1) },
             { BlockType.CURTAIN_V, (3, 3) },
             { BlockType.FLAG, (256, 770) },
             { BlockType.RUG_BIG, (7, 7) },
@@ -57,7 +56,7 @@ namespace DestinyCustomFlags
         {
             { BlockType.NONE, (0, 0) },
             { BlockType.BED, (959, 682) },
-            { BlockType.CURTAIN_H, (4, 132) },//
+            { BlockType.CURTAIN_H, (612, 706) },
             { BlockType.CURTAIN_V, (525, 496) },
             { BlockType.FLAG, (377, 252) },
             { BlockType.RUG_BIG, (627, 330) },
@@ -70,20 +69,31 @@ namespace DestinyCustomFlags
         {
             { BlockType.NONE, (false, false) },
             { BlockType.BED, (true, true) },
-            { BlockType.CURTAIN_H, (false, false) },//
-            { BlockType.CURTAIN_V, (false, false) },//
+            { BlockType.CURTAIN_H, (false, false) },
+            { BlockType.CURTAIN_V, (false, false) },
             { BlockType.FLAG, (false, false) },
             { BlockType.RUG_BIG, (false, false) },
             { BlockType.RUG_SMALL, (false, false) },
             { BlockType.SAIL, (true, false) },
         };
 
-        public static CustomFlags instance;
+        public static readonly Dictionary<BlockType, SplitImageData[]> SPLIT_IMAGES = new Dictionary<BlockType, SplitImageData[]>()
+        {
+            {
+                BlockType.CURTAIN_H,
+                new SplitImageData[] {
+                    new SplitImageData((0, 0), (307, 706), (3, 505), Rotation.LEFT),
+                    new SplitImageData((307, 0), (306, 706), (715, 106), Rotation.FLIP),
+                }
+            },
+        };
+
+        public static CustomBlocks instance;
         public static JsonModInfo modInfo;
 
         private static GameObject menu;
         private static GameObject menuAsset;
-        private static CustomFlagsMenu cfMenu;
+        private static CustomBlocksMenu cfMenu;
 
         // Dictionaries for storing the data for new materials.
         public Dictionary<BlockType, Texture2D> baseTextures;
@@ -104,7 +114,7 @@ namespace DestinyCustomFlags
         {
             get
             {
-                return CustomFlags.instance.ExtraSettingsAPI_GetCheckboxState("ignoreFlagMessages");
+                return CustomBlocks.instance.ExtraSettingsAPI_GetCheckboxState("ignoreFlagMessages");
             }
         }
 
@@ -112,7 +122,7 @@ namespace DestinyCustomFlags
         {
             get
             {
-                return CustomFlags.instance.ExtraSettingsAPI_GetKeybindMain("interactKey");
+                return CustomBlocks.instance.ExtraSettingsAPI_GetKeybindMain("interactKey");
             }
         }
 
@@ -120,7 +130,7 @@ namespace DestinyCustomFlags
         {
             get
             {
-                return CustomFlags.instance.ExtraSettingsAPI_GetCheckboxState("editorEnabled");
+                return CustomBlocks.instance.ExtraSettingsAPI_GetCheckboxState("editorEnabled");
             }
         }
 
@@ -128,7 +138,7 @@ namespace DestinyCustomFlags
         {
             get
             {
-                return CustomFlags.instance.ExtraSettingsAPI_GetCheckboxState("preventChanges");
+                return CustomBlocks.instance.ExtraSettingsAPI_GetCheckboxState("preventChanges");
             }
         }
 
@@ -137,45 +147,55 @@ namespace DestinyCustomFlags
 
         public IEnumerator Start()
         {
-            CustomFlags.instance = this;
+            CustomBlocks.instance = this;
             this.baseTextures = new Dictionary<BlockType, Texture2D>();
             this.baseNormals = new Dictionary<BlockType, Texture2D>();
             this.basePaints = new Dictionary<BlockType, Texture2D>();
             this.defaultMaterials = new Dictionary<BlockType, Material>();
             this.defaultSprites = new Dictionary<BlockType, Sprite>();
-            HNotification notification = HNotify.instance.AddNotification(HNotify.NotificationType.spinning, "Loading CustomFlags...");
+            HNotification notification = HNotify.instance.AddNotification(HNotify.NotificationType.spinning, "Loading CustomBlocks...");
 
-            CustomFlags.modInfo = modlistEntry.jsonmodinfo;
-            this.harmony = new Harmony("com.destruction.CustomFlags");
-            this.harmony.PatchAll(Assembly.GetExecutingAssembly());
-            this.prefabHolder = new GameObject("prefabHolder").transform;
-            this.prefabHolder.gameObject.SetActive(false);
-            DontDestroyOnLoad(this.prefabHolder.gameObject);
+            try
+            {
+                CustomBlocks.modInfo = modlistEntry.jsonmodinfo;
+                this.harmony = new Harmony("com.destruction.CustomBlocks");
+                this.harmony.PatchAll(Assembly.GetExecutingAssembly());
+                this.prefabHolder = new GameObject("prefabHolder").transform;
+                this.prefabHolder.gameObject.SetActive(false);
+                DontDestroyOnLoad(this.prefabHolder.gameObject);
 
-            // First thing is first, let's fetch our shader from the game.
-            this.shader = Shader.Find(" BlockPaint");
+                // First thing is first, let's fetch our shader from the game.
+                this.shader = Shader.Find(" BlockPaint");
 
-            // Second, setup most of the materials using the basic methods.
-            this.SetupBasicBlockData(BlockType.BED, "bed", this.GetOriginalMaterial(BED_ID));
-            this.SetupBasicBlockData(BlockType.CURTAIN_V, "curtain_v", this.GetOriginalMaterial(CURTAIN_VERTICAL_ID));
-            this.SetupBasicBlockData(BlockType.FLAG, "flag", this.GetOriginalMaterial(FLAG_ID));
-            this.SetupBasicBlockData(BlockType.RUG_BIG, "rug_big", this.GetOriginalMaterial(RUG_BIG_ID));
-            this.SetupBasicBlockData(BlockType.RUG_SMALL, "rug_small", this.GetOriginalMaterial(RUG_SMALL_ID));
-            this.SetupBasicBlockData(BlockType.SAIL, "sail", this.GetOriginalMaterial(SAIL_ID));
+                // Second, setup most of the materials using the basic methods.
+                this.SetupBasicBlockData(BlockType.BED, "bed", this.GetOriginalMaterial(BED_ID));
+                this.SetupBasicBlockData(BlockType.CURTAIN_V, "curtain_v", this.GetOriginalMaterial(CURTAIN_VERTICAL_ID));
+                this.SetupBasicBlockData(BlockType.CURTAIN_H, "curtain_h", this.GetOriginalMaterial(CURTAIN_HORIZONTAL_ID));
+                this.SetupBasicBlockData(BlockType.FLAG, "flag", this.GetOriginalMaterial(FLAG_ID));
+                this.SetupBasicBlockData(BlockType.RUG_BIG, "rug_big", this.GetOriginalMaterial(RUG_BIG_ID));
+                this.SetupBasicBlockData(BlockType.RUG_SMALL, "rug_small", this.GetOriginalMaterial(RUG_SMALL_ID));
+                this.SetupBasicBlockData(BlockType.SAIL, "sail", this.GetOriginalMaterial(SAIL_ID));
 
-            // Create the custom block item bases.
-            this.customItems = new Item_Base[] {
-                this.CreateCustomBedItem(),
-                //this.CreateCustomCurtainHItem(),
-                this.CreateCustomCurtainVItem(),
-                this.CreateCustomFlagItem(),
-                this.CreateCustomRugBigItem(),
-                this.CreateCustomRugSmallItem(),
-                this.CreateCustomSailItem(),
-            };
+                // Create the custom block item bases.
+                this.customItems = new Item_Base[] {
+                    this.CreateCustomBedItem(),
+                    this.CreateCustomCurtainHItem(),
+                    this.CreateCustomCurtainVItem(),
+                    this.CreateCustomFlagItem(),
+                    this.CreateCustomRugBigItem(),
+                    this.CreateCustomRugSmallItem(),
+                    this.CreateCustomSailItem(),
+                };
 
-            // Register the items.
-            Array.ForEach(this.customItems, x => RAPI.RegisterItem(x));
+                // Register the items.
+                Array.ForEach(this.customItems, x => RAPI.RegisterItem(x));
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+                notification.Close();
+                yield break;
+            }
 
             // Now, load the menu from the asset bundle.
             var bundleLoadRequest = AssetBundle.LoadFromMemoryAsync(GetEmbeddedFileBytes("general_assets/customflags.assets"));
@@ -185,28 +205,38 @@ namespace DestinyCustomFlags
             var request = this.bundle.LoadAssetAsync<GameObject>("CustomFlagsMenu");
             yield return request;
 
-            CustomFlags.menuAsset = request.asset as GameObject;
-            CustomFlags.menu = Instantiate(CustomFlags.menuAsset, this.transform);
-            CustomFlags.cfMenu = CustomFlags.menu.AddComponent<CustomFlagsMenu>();
+            try
+            {
+                CustomBlocks.menuAsset = request.asset as GameObject;
+                CustomBlocks.menu = Instantiate(CustomBlocks.menuAsset, this.transform);
+                CustomBlocks.cfMenu = CustomBlocks.menu.AddComponent<CustomBlocksMenu>();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+                notification.Close();
+                yield break;
+            }
 
-            CustomFlags.Log("Mod has been loaded.");
+            CustomBlocks.Log("Mod has been loaded.");
+
             notification.Close();
         }
 
         public void OnModUnload()
         {
-            this.harmony?.UnpatchAll("com.destruction.CustomFlags");
+            this.harmony?.UnpatchAll("com.destruction.CustomBlocks");
             this.bundle?.Unload(true);
             Destroy(this.prefabHolder?.gameObject);
-            if (CustomFlags.menu)
+            if (CustomBlocks.menu)
             {
-                Destroy(CustomFlags.menu);
+                Destroy(CustomBlocks.menu);
             }
-            if (CustomFlags.menuAsset)
+            if (CustomBlocks.menuAsset)
             {
-                Destroy(CustomFlags.menuAsset);
+                Destroy(CustomBlocks.menuAsset);
             }
-            CustomFlags.Log("Mod has been unloaded.");
+            CustomBlocks.Log("Mod has been unloaded.");
         }
 
         public static void Log(object message)
@@ -219,9 +249,9 @@ namespace DestinyCustomFlags
             Debug.Log($"[{modInfo.name}][DEBUG]: {message}");
         }
 
-        public static void OpenCustomFlagsMenu(ICustomBlock cf)
+        public static void OpenCustomBlocksMenu(ICustomBlock cf)
         {
-            CustomFlags.cfMenu.ShowMenu(cf);
+            CustomBlocks.cfMenu.ShowMenu(cf);
         }
 
         /*
@@ -231,8 +261,8 @@ namespace DestinyCustomFlags
         private void SetupBasicBlockData(BlockType bt, string imgDir, Material originalMat)
         {
             this.AddBaseTextures(bt, originalMat, $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
-            this.defaultMaterials[bt] = CustomFlags.CreateMaterialFromImageData(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
-            this.defaultSprites[bt] = CustomFlags.CreateSpriteFromBytes(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
+            this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
+            this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
         }
 
         /*
@@ -250,17 +280,17 @@ namespace DestinyCustomFlags
             // Get the diffuse portion of the texture.
             add[0] = (originalMat.GetTexture("_Diffuse") as Texture2D).CreateReadable();
             ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(texture));
-            CustomFlags.PlaceImageInTexture(add[0], insertTex, bt);
+            CustomBlocks.PlaceImageInTexture(add[0], insertTex, bt);
 
             // Now we need to generate our normal map.
             add[1] = (originalMat.GetTexture("_Normal") as Texture2D).CreateReadable();
             ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(normal));
-            CustomFlags.PlaceImageInTexture(add[1], insertTex, bt);
+            CustomBlocks.PlaceImageInTexture(add[1], insertTex, bt);
 
             // Now we need to generate our paint map.
             add[2] = (originalMat.GetTexture("_MetallicRPaintMaskGSmoothnessA") as Texture2D).CreateReadable();
             ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(paint));
-            CustomFlags.PlaceImageInTexture(add[2], insertTex, bt);
+            CustomBlocks.PlaceImageInTexture(add[2], insertTex, bt);
 
             this.baseTextures[bt] = add[0];
             this.baseNormals[bt] = add[1];
@@ -277,13 +307,13 @@ namespace DestinyCustomFlags
             Texture2D tex = data.ToTexture2D(SIZES[bt].Item1, SIZES[bt].Item2);
             if (!tex)
             {
-                Debug.Log("Could not create material from image data: data failed to convert.");
+                CustomBlocks.DebugLog("Could not create material from image data: data failed to convert.");
                 return null;
             }
 
             // Create the material and put the flag inside of it.
-            Material mat = CustomFlags.instance.PrepareMaterial(bt);
-            CustomFlags.PlaceImageInMaterial(mat, tex, bt);
+            Material mat = CustomBlocks.instance.PrepareMaterial(bt);
+            CustomBlocks.PlaceImageInMaterial(mat, tex, bt);
 
             // Return it.
             return mat;
@@ -301,7 +331,7 @@ namespace DestinyCustomFlags
             }
             if (data.Length == 0)
             {
-                return CustomFlags.instance.defaultSprites[bt];
+                return CustomBlocks.instance.defaultSprites[bt];
             }
 
             Vector2 pivot = new Vector2(0.5f, 0.5f);
@@ -309,7 +339,7 @@ namespace DestinyCustomFlags
 
             Texture2D container = new Texture2D(1524, 1024);
             Texture2D imageTex = data.ToTexture2D(SIZES[bt].Item1, SIZES[bt].Item2);
-            (int, int, int, int) newSize = CustomFlags.ScaleToFit(SIZES[bt].Item1, SIZES[bt].Item2, 1524, 1024);
+            (int, int, int, int) newSize = CustomBlocks.ScaleToFit(SIZES[bt].Item1, SIZES[bt].Item2, 1524, 1024);
             container.Edit(imageTex, newSize.Item1, newSize.Item2, newSize.Item3, newSize.Item4);
 
             return Sprite.Create(container, rect, pivot);
@@ -359,7 +389,124 @@ namespace DestinyCustomFlags
          *  * Crafting Sub Name
          *  * Description
          */
-        private Item_Base CreateGenericCustomItem<BlockClass, NetworkClass>(int originalID, int newID, string[] data, Vector3 bbSize, Vector3 bbCenter, CostMultiple[] recipe, CraftingCategory craftCat) where BlockClass : Block where NetworkClass : MonoBehaviour_Network
+        private Item_Base CreateGenericCustomItem<BlockClass, NetworkClass>(int originalID, int newID, string[] data, Vector3 bbSize, Vector3 bbCenter, CostMultiple[] recipe, CraftingCategory craftCat) where BlockClass : Block, ICustomBlock where NetworkClass : MonoBehaviour_ID_Network
+        {
+            // Create a clone of the regular flag.
+            Item_Base originalItem = ItemManager.GetItemByIndex(originalID);
+            Item_Base customBlock = ScriptableObject.CreateInstance<Item_Base>();
+            customBlock.Initialize(newID, data[0], 1);
+            customBlock.settings_buildable = originalItem.settings_buildable.Clone();
+            customBlock.settings_consumeable = originalItem.settings_consumeable.Clone();
+            customBlock.settings_cookable = originalItem.settings_cookable.Clone();
+            customBlock.settings_equipment = originalItem.settings_equipment.Clone();
+            customBlock.settings_Inventory = originalItem.settings_Inventory.Clone();
+            customBlock.settings_recipe = originalItem.settings_recipe.Clone();
+            customBlock.settings_usable = originalItem.settings_usable.Clone();
+
+            Block[] blocks = customBlock.settings_buildable.GetBlockPrefabs().Clone() as Block[];
+
+            // Set the block to not be paintable.
+            Traverse.Create(customBlock.settings_buildable).Field("primaryPaintAxis").SetValue(Axis.None);
+
+            // Setup the recipe.
+            customBlock.SetRecipe(recipe, craftCat, 1, false, data[2], 1);
+            var trav = Traverse.Create(customBlock.settings_recipe);
+            trav.Field("_hiddenInResearchTable").SetValue(false);
+            trav.Field("skins").SetValue(new Item_Base[0]);
+            trav.Field("baseSkinItem").SetValue(null);
+
+            // Set the display stuff.
+            customBlock.settings_Inventory.DisplayName = data[1];
+            customBlock.settings_Inventory.Description = data[4];
+
+            // Localization stuff.
+            customBlock.settings_Inventory.LocalizationTerm = $"Item/{data[0]}";
+            var language = new LanguageSourceData()
+            {
+                mDictionary = new Dictionary<string, TermData>
+                {
+                    [$"Item/{data[0]}"] = new TermData() { Languages = new[] { $"{data[1]}@{data[4]}" } },
+                    [$"CraftingSub/{data[2]}"] = new TermData() { Languages = new[] { data[3] } }
+                },
+                mLanguages = new List<LanguageData> { new LanguageData() { Code = "en", Name = "English" } }
+            };
+            LocalizationManager.Sources.Add(language);
+            Traverse.Create(typeof(LocalizationManager)).Field("OnLocalizeEvent").GetValue<LocalizationManager.OnLocalizeCallback>().Invoke();
+
+
+            // Now, we need to replace Block with BlockType;
+            for (int i = 0; i < blocks.Length; ++i)
+            {
+                if (blocks[i])
+                {
+                    // Based on some of Aidan's code.
+                    var blockPrefab = Instantiate(blocks[i], this.prefabHolder, false);
+                    blockPrefab.name = $"Block_CustomFlag_{i}";
+                    var cb = blockPrefab.gameObject.AddComponent<BlockClass>();
+                    cb.CopyFieldsOf(blockPrefab);
+                    cb.ReplaceValues(blockPrefab, cb);
+                    blockPrefab.ReplaceValues(originalItem, customBlock);
+                    blocks[i] = cb;
+                    DestroyImmediate(blockPrefab);
+                    if (bbSize != Vector3.zero)
+                    {
+                        cb.gameObject.AddComponent<RaycastInteractable>();
+                        var c = cb.gameObject.AddComponent<BoxCollider>();
+                        c.size = bbSize;
+                        c.center = bbCenter;
+
+                        c.isTrigger = true;
+                        c.enabled = false;
+                        c.gameObject.layer = 10;
+                        cb.onoffColliders = cb.onoffColliders.Extend(c);
+                    }
+
+                    if (cb.networkedBehaviour != null)
+                    {
+                        var originalNb = cb.GetComponent<MonoBehaviour_Network>();
+                        var nb = cb.gameObject.AddComponent<NetworkClass>();
+                        nb.CopyFieldsOf(originalNb);
+                        nb.ReplaceValues(originalNb, nb);
+                        DestroyImmediate(originalNb);
+                    }
+                    else if (cb.networkedIDBehaviour != null)
+                    {
+                        var originalNb = cb.GetComponent<MonoBehaviour_ID_Network>();
+                        var nb = cb.gameObject.AddComponent<NetworkClass>();
+                        nb.CopyFieldsOf(originalNb);
+                        nb.ReplaceValues(originalNb, nb);
+                        DestroyImmediate(originalNb);
+                    }
+                    else
+                    {
+                        var nb = cb.gameObject.AddComponent<NetworkClass>();
+                        if (nb is MonoBehaviour_Network)
+                        {
+                            cb.networkedBehaviour = nb as MonoBehaviour_Network;
+                            cb.networkType = NetworkType.NetworkBehaviour;
+                        }
+                        else
+                        {
+                            cb.networkedIDBehaviour = nb as MonoBehaviour_ID_Network;
+                            cb.networkType = NetworkType.NetworkIDBehaviour;
+                        }
+                    }
+
+                    // Use traverse to get around generic BS.
+                    Traverse.Create(cb).Method("set_ImageData", new byte[0]).GetValue();
+                }
+            }
+
+            Traverse.Create(customBlock.settings_buildable).Field("blockPrefabs").SetValue(blocks);
+
+            foreach (var q in Resources.FindObjectsOfTypeAll<SO_BlockQuadType>())
+                if (q.AcceptsBlock(originalItem))
+                    Traverse.Create(q).Field("acceptableBlockTypes").GetValue<List<Item_Base>>().Add(customBlock);
+
+            return customBlock;
+        }
+
+        private Item_Base CreateGenericCustomItemInteractable<BlockClass, NetworkClass>(int originalID, int newID, string[] data, CostMultiple[] recipe, CraftingCategory craftCat) where BlockClass : Block_Interactable, ICustomBlock where NetworkClass : Placeable_Interactable
         {
             // Create a clone of the regular flag.
             Item_Base originalItem = ItemManager.GetItemByIndex(originalID);
@@ -418,24 +565,14 @@ namespace DestinyCustomFlags
                     blockPrefab.ReplaceValues(originalItem, customBlock);
                     blocks[i] = cb;
                     DestroyImmediate(blockPrefab);
-                    if (bbSize != Vector3.zero)
-                    {
-                        cb.gameObject.AddComponent<RaycastInteractable>();
-                        var c = cb.gameObject.AddComponent<BoxCollider>();
-                        c.size = bbSize;
-                        c.center = bbCenter;
 
-                        c.isTrigger = true;
-                        c.enabled = false;
-                        c.gameObject.layer = 10;
-                        cb.onoffColliders = cb.onoffColliders.Extend(c);
-                    }
+                    var originalNb = cb.gameObject.GetComponent<Placeable_Interactable>();
+                    var nb = cb.gameObject.AddComponent<NetworkClass>();
+                    nb.CopyFieldsOf(originalNb);
+                    nb.ReplaceValues(originalNb, nb);
+                    DestroyImmediate(originalNb);
 
-                    cb.networkedBehaviour = cb.gameObject.AddComponent<NetworkClass>();
-                    cb.networkType = NetworkType.NetworkBehaviour;
-
-                    // Use traverse to get around generic BS.
-                    Traverse.Create(cb).Method("set_ImageData", new byte[0]).GetValue();
+                    cb.SetImageData(new byte[0]);
                 }
             }
 
@@ -481,7 +618,7 @@ namespace DestinyCustomFlags
                 "Custom Curtains",
                 "A customizable curtain."
             };
-            return this.CreateGenericCustomItem<Block_CustomCurtainH, CustomBlock_Network>(CURTAIN_HORIZONTAL_ID, CUSTOM_CURTAIN_H_ITEM_ID, data, Vector3.zero, Vector3.zero, recipe, CraftingCategory.Decorations);
+            return this.CreateGenericCustomItemInteractable<Block_CustomCurtainH, CustomInteractableOC_Network>(CURTAIN_HORIZONTAL_ID, CUSTOM_CURTAIN_H_ITEM_ID, data, recipe, CraftingCategory.Decorations);
         }
 
         private Item_Base CreateCustomCurtainVItem()
@@ -499,7 +636,7 @@ namespace DestinyCustomFlags
                 "Custom Curtains",
                 "A customizable curtain."
             };
-            return this.CreateGenericCustomItem<Block_CustomCurtainV, CustomBlock_Network>(CURTAIN_VERTICAL_ID, CUSTOM_CURTAIN_V_ITEM_ID, data, Vector3.zero, Vector3.zero, recipe, CraftingCategory.Decorations);
+            return this.CreateGenericCustomItemInteractable<Block_CustomCurtainV, CustomInteractableOC_Network>(CURTAIN_VERTICAL_ID, CUSTOM_CURTAIN_V_ITEM_ID, data, recipe, CraftingCategory.Decorations);
         }
 
         /*
@@ -705,13 +842,12 @@ namespace DestinyCustomFlags
 
                     // Finally, we need to remove the Sail instance and add our
                     // own class instead.
+                    var originalNb = cs.GetComponent<Sail>();
                     var sail = cs.gameObject.AddComponent<CustomSail_Network>();
-                    sail.CopyFieldsOf(cs.GetComponent<Sail>());
-                    sail.ReplaceValues(cs.GetComponent<Sail>(), sail);
-                    DestroyImmediate(cs.GetComponent<Sail>());
-                    cs.networkedBehaviour = sail;
+                    sail.CopyFieldsOf(originalNb);
+                    sail.ReplaceValues(originalNb, sail);
+                    DestroyImmediate(originalNb);
 
-                    cs.networkType = NetworkType.NetworkBehaviour;
                     cs.ImageData = new byte[0];
                 }
             }
@@ -737,7 +873,7 @@ namespace DestinyCustomFlags
          */
         private static void PlaceImageInMaterial(Material dest, Texture2D src, BlockType bt)
         {
-            CustomFlags.PlaceImageInTexture(dest.GetTexture("_Diffuse") as Texture2D, src, bt);
+            CustomBlocks.PlaceImageInTexture(dest.GetTexture("_Diffuse") as Texture2D, src, bt);
         }
 
         /*
@@ -750,7 +886,42 @@ namespace DestinyCustomFlags
          */
         private static void PlaceImageInTexture(Texture2D dest, Texture2D src, BlockType bt)
         {
-            dest.Edit(src, LOCATIONS[bt].Item1, LOCATIONS[bt].Item2, SIZES[bt].Item1, SIZES[bt].Item2, bt);
+            // A negative position means it's a split image.
+            if (LOCATIONS[bt].Item1 < 0)
+            {
+                CustomBlocks.PlaceSplitImageInTexture(dest, src, bt);
+            }
+            else
+            {
+                dest.Edit(src, LOCATIONS[bt].Item1, LOCATIONS[bt].Item2, SIZES[bt].Item1, SIZES[bt].Item2, bt);
+            }
+        }
+
+        /*
+         * Special function for determining how to deal with a split image to
+         * place it into the texture.
+         */
+        private static void PlaceSplitImageInTexture(Texture2D dest, Texture2D src, BlockType bt)
+        {
+            int i = 0;
+            foreach (SplitImageData sid in SPLIT_IMAGES[bt])
+            {
+                Texture2D slice = src.Cut(sid.srcXY, sid.widthHeight);
+                slice.Rotate(sid.rotation);
+                int height;
+                int width;
+                if (sid.rotation == Rotation.LEFT || sid.rotation == Rotation.RIGHT)
+                {
+                    height = sid.widthHeight.Item1;
+                    width = sid.widthHeight.Item2;
+                }
+                else
+                {
+                    width = sid.widthHeight.Item1;
+                    height = sid.widthHeight.Item2;
+                }
+                dest.Edit(slice, sid.destXY.Item1, sid.destXY.Item2, width, height, bt);
+            }
         }
 
         /*
@@ -789,7 +960,7 @@ namespace DestinyCustomFlags
                     method.ReflectedType != null ? method.ReflectedType.Name : string.Empty,
                     method.Name) + "\n";
             }
-            CustomFlags.DebugLog(message);
+            CustomBlocks.DebugLog(message);
         }
 
         public enum BlockType
@@ -804,6 +975,27 @@ namespace DestinyCustomFlags
             // Special value used for the edit function to not mirror.
             NONE
         }
+
+        // Class for storing data about a split image.
+        public struct SplitImageData
+        {
+            // The location in the source image of the bottom right pixel.
+            public ValueTuple<int, int> srcXY;
+            // The width and height of the split.
+            public ValueTuple<int, int> widthHeight;
+            // The location in the destination for the bottom right pixel.
+            public ValueTuple<int, int> destXY;
+            // The rotation to use when placing it in the destination.
+            public Rotation rotation;
+
+            public SplitImageData((int, int) srcXY, (int, int) widthHeight, (int, int) destXY, Rotation rotation)
+            {
+                this.srcXY = srcXY;
+                this.widthHeight = widthHeight;
+                this.destXY = destXY;
+                this.rotation = rotation;
+            }
+        }
     }
 
 
@@ -814,7 +1006,7 @@ namespace DestinyCustomFlags
         public static void Postfix(ref RGD_Block __instance, Block block)
         {
             // Make sure it is one of our blocks.
-            if (__instance.BlockIndex >= CustomFlags.CUSTOM_BLOCK_ID_MIN && __instance.BlockIndex <= CustomFlags.CUSTOM_BLOCK_ID_MAX)
+            if (__instance.BlockIndex >= CustomBlocks.CUSTOM_BLOCK_ID_MIN && __instance.BlockIndex <= CustomBlocks.CUSTOM_BLOCK_ID_MAX)
             {
                 RGD_Storage rgd = __instance as RGD_Storage;
                 if (rgd != null)
@@ -822,12 +1014,12 @@ namespace DestinyCustomFlags
                     ICustomBlock cb = block as ICustomBlock;
                     if (cb != null)
                     {
-                        if (Raft_Network.IsHost || !CustomFlags.IgnoreFlagMessages)
+                        if (Raft_Network.IsHost || !CustomBlocks.IgnoreFlagMessages)
                         {
                             byte[] imageData = Convert.FromBase64String(rgd.slots[0].exclusiveString);
                             if (rgd.slots[0].itemAmount == 0)
                             {
-                                CustomFlags.DebugLog("Found flag with old save data. Updating to new save system.");
+                                CustomBlocks.DebugLog("Found flag with old save data. Updating to new save system.");
                                 // Handle older saves with a different form of image
                                 // save data.
                                 if (Raft_Network.IsHost)
@@ -859,31 +1051,28 @@ namespace DestinyCustomFlags
                             }
                             sail?.SetRotation(BitConverter.ToSingle(BitConverter.GetBytes(rgd.storageObjectIndex), 0));
                         }
+                        else if (cb is Block_CustomBlock_Interactable)
+                        {
+                            Placeable_Interactable interact = block.GetComponent<Placeable_Interactable>();
+                            interact.RestoreIndex(BitConverter.ToInt32(BitConverter.GetBytes(rgd.storageObjectIndex), 0));
+                        }
                     }
                 }
             }
         }
     }
 
-    /*
-    [HarmonyPatch(typeof(SteamNetworking), "SendP2PPacket")]
-    public class Patch_Steam
-    {
-        public static void Prefix(CSteamID steamIDRemote, uint cubData)
-        {
-            Debug.Log($"Got packet of length {cubData}");
-            P2PSessionState_t state = new P2PSessionState_t();
-            SteamNetworking.GetP2PSessionState(steamIDRemote, out state);
-            Debug.Log($"Bytes to send: {state.m_nBytesQueuedForSend}");
-        }
 
-        public static void Postfix(CSteamID steamIDRemote)
-        {
-            P2PSessionState_t state = new P2PSessionState_t();
-            SteamNetworking.GetP2PSessionState(steamIDRemote, out state);
-            Debug.Log($"Bytes to send: {state.m_nBytesQueuedForSend}");
-        }
-    }*/
+
+    public enum Rotation
+    {
+        LEFT, // Rotate 90 degrees counter-clockwise.
+        FLIP, // Rotate 90 degrees clockwise.
+        NONE, // No rotation.
+        RIGHT, // Rotate 180 degrees.
+    }
+
+
 
     static class ArrayExtension
     {
@@ -894,6 +1083,8 @@ namespace DestinyCustomFlags
             return l.ToArray();
         }
     }
+
+
 
     static class Texture2DExtension
     {
@@ -916,23 +1107,92 @@ namespace DestinyCustomFlags
         }
 
         // Aidan is a god.
-        public static void Edit(this Texture2D baseImg, Texture2D overlay, int xOffset, int yOffset, int targetX, int targetY, CustomFlags.BlockType bt = CustomFlags.BlockType.NONE)
+        public static void Edit(this Texture2D baseImg, Texture2D overlay, int xOffset, int yOffset, int targetX, int targetY, CustomBlocks.BlockType bt = CustomBlocks.BlockType.NONE)
         {
             var w = targetX;
             var h = targetY;
-            var mirrorX = CustomFlags.MIRROR[bt].Item1 ? 1 : 0;
-            var mirrorY = CustomFlags.MIRROR[bt].Item2 ? 1 : 0;
+            var mirrorX = CustomBlocks.MIRROR[bt].Item1 ? w - 1 : 0;
+            var mirrorY = CustomBlocks.MIRROR[bt].Item2 ? h - 1 : 0;
             for (var x = 0; x < w; x++)
             {
                 for (var y = 0; y < h; y++)
                 {
-                    baseImg.SetPixel(xOffset + x, yOffset + y, baseImg.GetPixel(x, y).Overlay(overlay.GetPixelBilinear(Math.Abs(mirrorX - (float)x / w), Math.Abs(mirrorY - (float)y / h))));
+                    baseImg.SetPixel(xOffset + x, yOffset + y, baseImg.GetPixel(x, y).Overlay(overlay.GetPixelBilinear(Math.Abs((float)(mirrorX - x) / w), Math.Abs((float)(mirrorY - y) / h))));
                 }
             }
             baseImg.Apply();
         }
 
-        public static byte[] SanitizeImage(this byte[] arr, CustomFlags.BlockType bt)
+        /*
+         * Returns a new Texture2D containing a portion of the original image.
+         */
+        public static Texture2D Cut(this Texture2D baseImg, int xOffset, int yOffset, int width, int height)
+        {
+            Texture2D tex = new Texture2D(width, height, baseImg.format, false);
+            for (int y = 0; y < height; ++y)
+            {
+                for (int x = 0; x < width; ++x)
+                {
+                    tex.SetPixel(x, y, baseImg.GetPixel(x + xOffset, y + yOffset));
+                }
+            }
+            tex.Apply();
+            return tex;
+        }
+
+        public static Texture2D Cut(this Texture2D baseImg, (int, int) xyOffset, (int, int) widthHeight)
+        {
+            return baseImg.Cut(xyOffset.Item1, xyOffset.Item2, widthHeight.Item1, widthHeight.Item2);
+        }
+
+        public static void Rotate(this Texture2D img, Rotation rot)
+        {
+            if (rot == Rotation.NONE)
+            {
+                // Don't change it.
+                return;
+            }
+            Color32[] source = img.GetPixels32();
+            Color32[] dest = new Color32[source.Length];
+            int height = img.height;
+            int width = img.width;
+            switch(rot)
+            {
+                case Rotation.LEFT:
+                    for (int y = 0; y < height; ++y)
+                    {
+                        for (int x = 0; x < width; ++x)
+                        {
+                            dest[(height - 1) - y + (x * height)] = source[x + (y * width)];
+                        }
+                    }
+                    img.Resize(img.height, img.width);
+                    break;
+                case Rotation.RIGHT:
+                    for (int y = 0; y < height; ++y)
+                    {
+                        for (int x = 0; x < width; ++x)
+                        {
+                            dest[y + ((width - 1 - x) * height)] = source[x + (y * width)];
+                        }
+                    }
+                    img.Resize(img.height, img.width);
+                    break;
+                case Rotation.FLIP:
+                    for (int y = 0; y < height; ++y)
+                    {
+                        for (int x = 0; x < width; ++x)
+                        {
+                            dest[((height - 1 - y) * width) + (width - 1 - x)] = source[x + (y * width)];
+                        }
+                    }
+                    break;
+            }
+            img.SetPixels32(dest);
+            img.Apply();
+        }
+
+        public static byte[] SanitizeImage(this byte[] arr, CustomBlocks.BlockType bt)
         {
             if (arr == null)
             {
@@ -950,7 +1210,7 @@ namespace DestinyCustomFlags
                 return new byte[0];
             }
 
-            (int, int) size = CustomFlags.SIZES[bt];
+            (int, int) size = CustomBlocks.SIZES[bt];
 
             // Resize the image before saving the color data.
             Texture2D tex = new Texture2D(size.Item1, size.Item2);
@@ -973,12 +1233,12 @@ namespace DestinyCustomFlags
         {
             if (arr == null)
             {
-                CustomFlags.DebugLog("Failed to convert byte array to Texture2D: array was null.");
+                CustomBlocks.DebugLog("Failed to convert byte array to Texture2D: array was null.");
                 return null;
             }
             if ((arr.Length & 3) != 0 || arr.Length != (width * height * 4))
             {
-                CustomFlags.DebugLog($"Failed to convert byte array to Texture2D: array was wrong length (expected {width * height * 4}, got {arr.Length}).");
+                CustomBlocks.DebugLog($"Failed to convert byte array to Texture2D: array was wrong length (expected {width * height * 4}, got {arr.Length}).");
                 return null;
             }
 
@@ -1028,6 +1288,8 @@ namespace DestinyCustomFlags
             return new Color(Ratio(a.r, b.r), Ratio(a.g, b.g), Ratio(a.b, b.b), b.a + a.a * (1 - b.a));
         }
     }
+
+
 
     // Thank you Aidan for these methods.
     static class ExtensionMethods
