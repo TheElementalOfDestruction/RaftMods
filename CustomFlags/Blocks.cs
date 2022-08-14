@@ -6,10 +6,36 @@ namespace DestinyCustomBlocks
 {
     public interface ICustomBlock
     {
+        /*
+         * Get the color array that will make up the custom image in the
+         * texture.
+         */
         byte[] GetImageData();
+
+        /*
+         * Set the color array that will make up the custom image in the
+         * texture.
+         */
         void SetImageData(byte[] data);
+
+        /*
+         * Retrieves the member of the BlockType enum that identifies this
+         * class.
+         */
         CustomBlocks.BlockType GetBlockType();
+
+        /*
+         * Tells the block whether it should be broadcasting updates at all.
+         */
         void SetSendUpdates(bool state);
+
+        /*
+         * Tells the block to switch the quality for the current custom image.
+         * A value of true means that it should follow the game quality and use
+         * mip maps, while a value of false tells it to always use full
+         * resolution.
+         */
+        void SwitchMipMapState(bool state);
     }
 
 
@@ -37,11 +63,39 @@ namespace DestinyCustomBlocks
             this.sendUpdates = state;
         }
 
+        void ICustomBlock.SwitchMipMapState(bool state)
+        {
+            Debug.Log($"Switch called on {this}");
+            if (this.occupyingComponent)
+            {
+                Debug.Log($"Occupying Component found on {this}");
+                Material mat = CustomBlocks.UseMipMaps ? this.autoResolutionMat : this.fullResolutionMat;
+                foreach(int i in this.RendererIndicies)
+                {
+                    this.occupyingComponent.renderers[i].material = mat;
+                }
+            }
+        }
+
+        private static readonly int[] rendererIndicies = { 0 };
+
         protected byte[] imageData;
         protected bool rendererPatched = false;
         protected bool showingText;
+        protected Material fullResolutionMat;
+        protected Material autoResolutionMat;
 
         public bool sendUpdates = true;
+
+        protected virtual int[] RendererIndicies
+        {
+            get
+            {
+                return rendererIndicies;
+            }
+        }
+
+        public abstract CustomBlocks.BlockType CustomBlockType { get; }
 
         public byte[] ImageData
         {
@@ -61,8 +115,6 @@ namespace DestinyCustomBlocks
             }
         }
 
-        public abstract CustomBlocks.BlockType CustomBlockType { get; }
-
         protected override void Start()
         {
             base.Start();
@@ -73,39 +125,56 @@ namespace DestinyCustomBlocks
         }
 
         /*
-         * Attempt to load the new data into the renderer, returning whether it
-         * succeeded.
+         * Attempt to load the new data into the renderer(s), returning whether
+         * it succeeded.
          */
         protected virtual bool PatchRenderer()
         {
+            // A null value is completely invalid.
+            if (this.imageData == null)
+            {
+                return false;
+            }
+
+            // Make sure the OccupyingComponent is good.
             if (!this.occupyingComponent)
             {
                 this.occupyingComponent = this.GetComponent<OccupyingComponent>();
                 this.occupyingComponent.FindRenderers();
             }
-            if (this.imageData == null)
-            {
-                return false;
-            }
+
+            // Setup our new materials and figure out which to use.
+            Material mat;
+
             if (this.imageData.Length != 0)
             {
                 // Create a new material from our data.
-                Material mat = CustomBlocks.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
+                mat = CustomBlocks.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
                 // If the creation fails, return false to signify.
                 if (!mat)
                 {
                     return false;
                 }
-
-                // Replace the material.
-                this.occupyingComponent.renderers[0].material = mat;
             }
             else
             {
                 // If we are here, use the default flag material.
+                mat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+            }
 
-                // Replace the material.
-                this.occupyingComponent.renderers[0].material = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+            // Setup the automatic resolution version and determine which to
+            // use.
+            this.fullResolutionMat = mat;
+            this.autoResolutionMat = mat.CreateMipMapEnabled();
+            if (CustomBlocks.UseMipMaps)
+            {
+                mat = this.autoResolutionMat;
+            }
+
+            // Replace the material(s).
+            foreach(int i in this.RendererIndicies)
+            {
+                this.occupyingComponent.renderers[i].material = mat;
             }
 
             this.rendererPatched = true;
@@ -193,11 +262,37 @@ namespace DestinyCustomBlocks
             this.sendUpdates = state;
         }
 
+        void ICustomBlock.SwitchMipMapState(bool state)
+        {
+            if (this.occupyingComponent)
+            {
+                Material mat = CustomBlocks.UseMipMaps ? this.autoResolutionMat : this.fullResolutionMat;
+                foreach(int i in this.RendererIndicies)
+                {
+                    this.occupyingComponent.renderers[i].material = mat;
+                }
+            }
+        }
+
+        private static readonly int[] rendererIndicies = { 0 };
+
         protected byte[] imageData;
         protected bool rendererPatched = false;
         protected bool showingText;
+        protected Material fullResolutionMat;
+        protected Material autoResolutionMat;
 
         public bool sendUpdates = true;
+
+        protected virtual int[] RendererIndicies
+        {
+            get
+            {
+                return rendererIndicies;
+            }
+        }
+
+        public abstract CustomBlocks.BlockType CustomBlockType { get; }
 
         public byte[] ImageData
         {
@@ -217,8 +312,6 @@ namespace DestinyCustomBlocks
             }
         }
 
-        public abstract CustomBlocks.BlockType CustomBlockType { get; }
-
         protected override void Start()
         {
             base.Start();
@@ -229,39 +322,56 @@ namespace DestinyCustomBlocks
         }
 
         /*
-         * Attempt to load the new data into the renderer, returning whether it
-         * succeeded.
+         * Attempt to load the new data into the renderer(s), returning whether
+         * it succeeded.
          */
         protected virtual bool PatchRenderer()
         {
+            // A null value is completely invalid.
+            if (this.imageData == null)
+            {
+                return false;
+            }
+
+            // Make sure the OccupyingComponent is good.
             if (!this.occupyingComponent)
             {
                 this.occupyingComponent = this.GetComponent<OccupyingComponent>();
                 this.occupyingComponent.FindRenderers();
             }
-            if (this.imageData == null)
-            {
-                return false;
-            }
+
+            // Setup our new materials and figure out which to use.
+            Material mat;
+
             if (this.imageData.Length != 0)
             {
                 // Create a new material from our data.
-                Material mat = CustomBlocks.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
+                mat = CustomBlocks.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
                 // If the creation fails, return false to signify.
                 if (!mat)
                 {
                     return false;
                 }
-
-                // Replace the material.
-                this.occupyingComponent.renderers[0].material = mat;
             }
             else
             {
                 // If we are here, use the default flag material.
+                mat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+            }
 
-                // Replace the material.
-                this.occupyingComponent.renderers[0].material = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+            // Setup the automatic resolution version and determine which to
+            // use.
+            this.fullResolutionMat = mat;
+            this.autoResolutionMat = mat.CreateMipMapEnabled();
+            if (CustomBlocks.UseMipMaps)
+            {
+                mat = this.autoResolutionMat;
+            }
+
+            // Replace the material(s).
+            foreach(int i in this.RendererIndicies)
+            {
+                this.occupyingComponent.renderers[i].material = mat;
             }
 
             this.rendererPatched = true;
@@ -351,11 +461,43 @@ namespace DestinyCustomBlocks
             this.sendUpdates = state;
         }
 
+        void ICustomBlock.SwitchMipMapState(bool state)
+        {
+            if (this.occupyingComponent)
+            {
+                Material mat = CustomBlocks.UseMipMaps ? this.autoResolutionMat : this.fullResolutionMat;
+                foreach(int i in this.RendererIndicies)
+                {
+                    this.occupyingComponent.renderers[i].material = mat;
+                }
+            }
+        }
+
+        private static readonly int[] rendererIndicies = { 1, 2 };
+
         protected byte[] imageData;
         protected bool rendererPatched = false;
         protected bool showingText;
+        protected Material fullResolutionMat;
+        protected Material autoResolutionMat;
 
         public bool sendUpdates = true;
+
+        protected virtual int[] RendererIndicies
+        {
+            get
+            {
+                return rendererIndicies;
+            }
+        }
+
+        public CustomBlocks.BlockType CustomBlockType
+        {
+            get
+            {
+                return CustomBlocks.BlockType.BED;
+            }
+        }
 
         public byte[] ImageData
         {
@@ -375,14 +517,6 @@ namespace DestinyCustomBlocks
             }
         }
 
-        public CustomBlocks.BlockType CustomBlockType
-        {
-            get
-            {
-                return CustomBlocks.BlockType.BED;
-            }
-        }
-
         protected override void Start()
         {
             base.Start();
@@ -393,41 +527,56 @@ namespace DestinyCustomBlocks
         }
 
         /*
-         * Attempt to load the new data into the renderer, returning whether it
-         * succeeded.
+         * Attempt to load the new data into the renderer(s), returning whether
+         * it succeeded.
          */
         protected virtual bool PatchRenderer()
         {
+            // A null value is completely invalid.
+            if (this.imageData == null)
+            {
+                return false;
+            }
+
+            // Make sure the OccupyingComponent is good.
             if (!this.occupyingComponent)
             {
                 this.occupyingComponent = this.GetComponent<OccupyingComponent>();
                 this.occupyingComponent.FindRenderers();
             }
-            if (this.imageData == null)
-            {
-                return false;
-            }
+
+            // Setup our new materials and figure out which to use.
+            Material mat;
+
             if (this.imageData.Length != 0)
             {
                 // Create a new material from our data.
-                Material mat = CustomBlocks.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
+                mat = CustomBlocks.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
                 // If the creation fails, return false to signify.
                 if (!mat)
                 {
                     return false;
                 }
-
-                // Replace the material.
-                this.occupyingComponent.renderers[1].material = mat;
-                this.occupyingComponent.renderers[2].material = mat;
             }
             else
             {
                 // If we are here, use the default flag material.
+                mat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+            }
 
-                // Replace the material.
-                this.occupyingComponent.renderers[1].material = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
-                this.occupyingComponent.renderers[2].material = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+            // Setup the automatic resolution version and determine which to
+            // use.
+            this.fullResolutionMat = mat;
+            this.autoResolutionMat = mat.CreateMipMapEnabled();
+            if (CustomBlocks.UseMipMaps)
+            {
+                mat = this.autoResolutionMat;
+            }
+
+            // Replace the material(s).
+            foreach(int i in this.RendererIndicies)
+            {
+                this.occupyingComponent.renderers[i].material = mat;
             }
 
             this.rendererPatched = true;
@@ -505,20 +654,14 @@ namespace DestinyCustomBlocks
             }
         }
 
-        /*
-         * Attempt to load the new data into the renderer, returning whether it
-         * succeeded.
-         */
-        protected override bool PatchRenderer()
+        private static readonly int[] rendererIndicies = { 0, 1, 2 };
+
+        protected override int[] RendererIndicies
         {
-            if (!base.PatchRenderer())
+            get
             {
-                return false;
+                return rendererIndicies;
             }
-            var mat = this.occupyingComponent.renderers[0].material;
-            this.occupyingComponent.renderers[1].material = mat;
-            this.occupyingComponent.renderers[2].material = mat;
-            return true;
         }
     }
 
@@ -534,19 +677,14 @@ namespace DestinyCustomBlocks
             }
         }
 
-        /*
-         * Attempt to load the new data into the renderer, returning whether it
-         * succeeded.
-         */
-        protected override bool PatchRenderer()
+        private static readonly int[] rendererIndicies = { 0, 1, 2 };
+
+        protected override int[] RendererIndicies
         {
-            if (!base.PatchRenderer())
+            get
             {
-                return false;
+                return rendererIndicies;
             }
-            var mat = this.occupyingComponent.renderers[0].material;
-            Array.ForEach(this.occupyingComponent.renderers, x => x.material = mat);
-            return true;
         }
     }
 
@@ -562,62 +700,13 @@ namespace DestinyCustomBlocks
             }
         }
 
-        /*
-         * Attempt to load the new data into the renderer, returning whether it
-         * succeeded.
-         */
-        protected override bool PatchRenderer()
+        protected override int[] RendererIndicies
         {
-            if (!this.occupyingComponent)
+            get
             {
-                this.occupyingComponent = this.GetComponent<OccupyingComponent>();
-                this.occupyingComponent.FindRenderers();
+                // Result is different based on flag orientation.
+                return new int[] { this.occupyingComponent.renderers.Length - 1 };
             }
-            if (this.imageData == null)
-            {
-                return false;
-            }
-            if (this.imageData.Length != 0)
-            {
-                // Create a new material from our data.
-                Material mat = CustomBlocks.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
-                // If the creation fails, return false to signify.
-                if (!mat)
-                {
-                    return false;
-                }
-
-                // Replace the material for the correct renderer.
-                if (this.occupyingComponent.renderers.Length == 1)
-                {
-                    this.occupyingComponent.renderers[0].material = mat;
-                }
-                else
-                {
-                    this.occupyingComponent.renderers[1].material = mat;
-                }
-            }
-            else
-            {
-                // If we are here, use the default flag material.
-
-                // Replace the material for the correct renderer.
-                if (this.occupyingComponent.renderers.Length == 1)
-                {
-                    this.occupyingComponent.renderers[0].material = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
-                }
-                else
-                {
-                    this.occupyingComponent.renderers[1].material = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
-                }
-            }
-
-            this.rendererPatched = true;
-            if (this.sendUpdates)
-            {
-                this.GetComponent<CustomBlock_Network>()?.BroadcastChange(this.imageData);
-            }
-            return true;
         }
     }
 
@@ -659,6 +748,16 @@ namespace DestinyCustomBlocks
             }
         }
 
+        private static readonly int[] rendererIndicies = { 1 };
+
+        protected override int[] RendererIndicies
+        {
+            get
+            {
+                return rendererIndicies;
+            }
+        }
+
         // We need to add sail data to this RGD.
         public override RGD Serialize_Save()
         {
@@ -669,48 +768,6 @@ namespace DestinyCustomBlocks
             rgd.storageObjectIndex = BitConverter.ToUInt32(BitConverter.GetBytes(this.GetComponent<Sail>().LocalRotation), 0);
 
             return rgd;
-        }
-
-        /*
-         * Attempt to load the new data into the renderer, returning whether it
-         * succeeded.
-         */
-        protected override bool PatchRenderer()
-        {
-            if (!this.occupyingComponent)
-            {
-                this.occupyingComponent = this.GetComponent<OccupyingComponent>();
-                this.occupyingComponent.FindRenderers();
-            }
-            if (this.imageData == null)
-            {
-                return false;
-            }
-            if (this.imageData.Length != 0)
-            {
-                // Create a new material from our data.
-                Material mat = CustomBlocks.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
-                // If the creation fails, return false to signify.
-                if (!mat)
-                {
-                    return false;
-                }
-
-                // Replace the material.
-                this.occupyingComponent.renderers[1].material = mat;
-            }
-            else
-            {
-                // If we are here, use the default sail material.
-                this.occupyingComponent.renderers[1].material = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
-            }
-
-            this.rendererPatched = true;
-            if (this.sendUpdates)
-            {
-                this.GetComponent<CustomSail_Network>()?.BroadcastChange(this.imageData);
-            }
-            return true;
         }
     }
 }

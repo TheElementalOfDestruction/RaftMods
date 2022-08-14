@@ -10,6 +10,9 @@ namespace DestinyCustomBlocks
 {
     public class CustomBlocksMenu : MonoBehaviour
     {
+        private static readonly string MOD_DATA_FOLDER = Path.Combine(HMLLibrary.HLib.path_modsFolder, "ModData");
+        private static readonly string RESOURCE_LOCATION = Path.Combine(MOD_DATA_FOLDER, "CustomBlocks");
+
         private CanvasGroup cg;
         private UnityEngine.UI.Image preview;
         private ICustomBlock currentBlock;
@@ -49,6 +52,20 @@ namespace DestinyCustomBlocks
             this.inputField.onSubmit.AddListener(this.LoadPreviewStartText);
 
             this.HideMenu();
+
+            // Make sure the ModData folder exists.
+            if (!Directory.Exists(MOD_DATA_FOLDER))
+            {
+                CustomBlocks.DebugLog("ModData folder not found. Creating it manually.");
+                Directory.CreateDirectory(MOD_DATA_FOLDER);
+            }
+
+            // Finally, let's setup out folder for custom blocks to be put in.
+            if (!Directory.Exists(RESOURCE_LOCATION))
+            {
+                CustomBlocks.DebugLog("Directory for custom blocks was not found. Creating.");
+                Directory.CreateDirectory(RESOURCE_LOCATION);
+            }
         }
 
         void Update()
@@ -123,7 +140,14 @@ namespace DestinyCustomBlocks
             }
             else
             {
-                if (File.Exists(path))
+                bool found = File.Exists(path);
+                if (!found && File.Exists(Path.Combine(RESOURCE_LOCATION, path)))
+                {
+                    found = true;
+                    path = Path.Combine(RESOURCE_LOCATION, path);
+                }
+
+                if (found)
                 {
                     temp = File.ReadAllBytes(path);
                     byte[] temp2 = temp.Length > 0 ? temp.SanitizeImage(this.currentBlock.GetBlockType()) : temp;

@@ -2,7 +2,7 @@
     "name": "Custom Blocks",
     "author": "Destruction",
     "description": "Adds several customizable blocks.",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "license": "GNU AGPLv3",
     "icon": "general_assets/icon.png",
     "banner": "general_assets/banner.png",
@@ -33,6 +33,12 @@
             "type": "checkbox",
             "name": "preventChanges",
             "text": "Prevent Other Users From Editing Blocks",
+            "default": true
+        },
+        {
+            "type": "checkbox",
+            "name": "useMipMaps",
+            "Text": "Use Game Settings For Texture Quality",
             "default": true
         }
     ]

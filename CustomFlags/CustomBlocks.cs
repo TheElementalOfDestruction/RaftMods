@@ -23,7 +23,7 @@ namespace DestinyCustomBlocks
             * Allow for turning on and off mipmaps.
         */
 
-        private const int BED_ID = 448; // Renderer for sheet flat is 1, occupied is 2.
+        private const int BED_ID = 448;
         private const int CURTAIN_HORIZONTAL_ID = 447;
         private const int CURTAIN_VERTICAL_ID = 446;
         private const int FLAG_ID = 478;
@@ -139,6 +139,14 @@ namespace DestinyCustomBlocks
             get
             {
                 return CustomBlocks.instance.ExtraSettingsAPI_GetCheckboxState("preventChanges");
+            }
+        }
+
+        public static bool UseMipMaps
+        {
+            get
+            {
+                return CustomBlocks.instance.ExtraSettingsAPI_GetCheckboxState("useMipMaps");
             }
         }
 
@@ -606,10 +614,8 @@ namespace DestinyCustomBlocks
         private Item_Base CreateCustomCurtainHItem()
         {
             var recipe = new[] {
-                new CostMultiple(new[] { ItemManager.GetItemByIndex(21) }, 10),
-                new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 20),
-                new CostMultiple(new[] { ItemManager.GetItemByIndex(95) }, 14),
-                new CostMultiple(new[] { ItemManager.GetItemByIndex(20) }, 9)
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 8),
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(22) }, 2),
             };
             var data = new[] {
                 "destiny_CustomCurtainH",
@@ -624,10 +630,8 @@ namespace DestinyCustomBlocks
         private Item_Base CreateCustomCurtainVItem()
         {
             var recipe = new[] {
-                new CostMultiple(new[] { ItemManager.GetItemByIndex(21) }, 10),
-                new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 20),
-                new CostMultiple(new[] { ItemManager.GetItemByIndex(95) }, 14),
-                new CostMultiple(new[] { ItemManager.GetItemByIndex(20) }, 9)
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 8),
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(22) }, 2),
             };
             var data = new[] {
                 "destiny_CustomCurtainV",
@@ -749,8 +753,8 @@ namespace DestinyCustomBlocks
         private Item_Base CreateCustomRugBigItem()
         {
             var recipe = new[] {
-                new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 2),
-                new CostMultiple(new[] { ItemManager.GetItemByIndex(22) }, 1),
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 4),
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(22) }, 2),
             };
             var data = new[] {
                 "destiny_CustomRugBig",
@@ -759,7 +763,7 @@ namespace DestinyCustomBlocks
                 "Custom Rugs",
                 "A customizable rug."
             };
-            return this.CreateGenericCustomItem<Block_CustomRugBig, CustomBlock_Network>(RUG_BIG_ID, CUSTOM_RUG_BIG_ITEM_ID, data, new Vector3(1.4797308f, 0.14399316f, 2.736644f), new Vector3(0, 0.005513929f, 0), recipe, CraftingCategory.Other);
+            return this.CreateGenericCustomItem<Block_CustomRugBig, CustomBlock_Network>(RUG_BIG_ID, CUSTOM_RUG_BIG_ITEM_ID, data, new Vector3(1.4797308f, 0.14399316f, 2.736644f), new Vector3(0, 0.005513929f, 0), recipe, CraftingCategory.Decorations);
         }
 
         private Item_Base CreateCustomRugSmallItem()
@@ -775,7 +779,7 @@ namespace DestinyCustomBlocks
                 "Custom Rugs",
                 "A customizable rug."
             };
-            return this.CreateGenericCustomItem<Block_CustomRugSmall, CustomBlock_Network>(RUG_SMALL_ID, CUSTOM_RUG_SMALL_ITEM_ID, data, new Vector3(0.8902238f, 0.12493733f, 1.32783f), new Vector3(0, 0.005513929f, 0), recipe, CraftingCategory.Other);
+            return this.CreateGenericCustomItem<Block_CustomRugSmall, CustomBlock_Network>(RUG_SMALL_ID, CUSTOM_RUG_SMALL_ITEM_ID, data, new Vector3(0.8902238f, 0.12493733f, 1.32783f), new Vector3(0, 0.005513929f, 0), recipe, CraftingCategory.Decorations);
         }
 
         /*
@@ -893,7 +897,7 @@ namespace DestinyCustomBlocks
             }
             else
             {
-                dest.Edit(src, LOCATIONS[bt].Item1, LOCATIONS[bt].Item2, SIZES[bt].Item1, SIZES[bt].Item2, bt);
+                dest.Edit(src, LOCATIONS[bt].Item1, LOCATIONS[bt].Item2, SIZES[bt].Item1, SIZES[bt].Item2, bt, true);
             }
         }
 
@@ -920,7 +924,7 @@ namespace DestinyCustomBlocks
                     width = sid.widthHeight.Item1;
                     height = sid.widthHeight.Item2;
                 }
-                dest.Edit(slice, sid.destXY.Item1, sid.destXY.Item2, width, height, bt);
+                dest.Edit(slice, sid.destXY.Item1, sid.destXY.Item2, width, height, bt, true);
             }
         }
 
@@ -945,8 +949,17 @@ namespace DestinyCustomBlocks
         }
 
         public static T CreateObject<T>() => (T)FormatterServices.GetUninitializedObject(typeof(T));
-        public bool ExtraSettingsAPI_GetCheckboxState(string name) => true;
+        public virtual bool ExtraSettingsAPI_GetCheckboxState(string name) => true;
         public KeyCode ExtraSettingsAPI_GetKeybindMain(string SettingName) => KeyCode.None;
+        public void ExtraSettingsAPI_Load()
+        {
+            this.SwitchMipMapUsage(CustomBlocks.UseMipMaps);
+        }
+
+        public void ExtraSettingsAPI_SettingsClose()
+        {
+            this.SwitchMipMapUsage(CustomBlocks.UseMipMaps);
+        }
 
         public static void LogStack()
         {
@@ -961,6 +974,25 @@ namespace DestinyCustomBlocks
                     method.Name) + "\n";
             }
             CustomBlocks.DebugLog(message);
+        }
+
+        /*
+         * Finds all existing custom blocks and instructs them to switch their
+         * textures to the specified mip map state. If the state is true, the
+         * blocks will use the game's texture quality setting for the blocks,
+         * otherwise they will use full resolution.
+         *
+         * This exists so that blocks don't need to be manually updated. Manual
+         * updates will always check the current texture settings to determine
+         * what to actually do.
+         */
+        public void SwitchMipMapUsage(bool state)
+        {
+            foreach (Block block in BlockCreator.GetPlacedBlocks())
+            {
+                // Only do something for custom blocks.
+                block.GetComponent<ICustomBlock>()?.SwitchMipMapState(state);
+            }
         }
 
         public enum BlockType
@@ -1086,6 +1118,44 @@ namespace DestinyCustomBlocks
 
 
 
+    static class MaterialExtension
+    {
+        public static readonly string[] ShaderPropNames = new String[]
+        {
+            "_Diffuse",
+            "_MetallicRPaintMaskGSmoothnessA",
+            "_Normal"
+        };
+
+        /*
+         * Takes a material without mip maps and creates one with mip maps.
+         */
+        public static Material CreateMipMapEnabled(this Material mat)
+        {
+            Material newMat = new Material(mat.shader);
+
+            // Iterate the list of known shader properties to copy.
+            foreach (string prop in ShaderPropNames)
+            {
+                // Get the original texture and create a new texture with mip
+                // maps enabled.
+                Texture2D originalTex = mat.GetTexture(prop) as Texture2D;
+                Texture2D newTex = new Texture2D(originalTex.width, originalTex.height, originalTex.format, true);
+
+                // Copy the image data.
+                newTex.SetPixels32(originalTex.GetPixels32());
+                newTex.Apply();
+
+                // Add it to the material.
+                newMat.SetTexture(prop, newTex);
+            }
+
+            return newMat;
+        }
+    }
+
+
+
     static class Texture2DExtension
     {
         // How is Aidan so amazing?
@@ -1107,7 +1177,7 @@ namespace DestinyCustomBlocks
         }
 
         // Aidan is a god.
-        public static void Edit(this Texture2D baseImg, Texture2D overlay, int xOffset, int yOffset, int targetX, int targetY, CustomBlocks.BlockType bt = CustomBlocks.BlockType.NONE)
+        public static void Edit(this Texture2D baseImg, Texture2D overlay, int xOffset, int yOffset, int targetX, int targetY, CustomBlocks.BlockType bt = CustomBlocks.BlockType.NONE, bool extend = false)
         {
             var w = targetX;
             var h = targetY;
@@ -1120,6 +1190,35 @@ namespace DestinyCustomBlocks
                     baseImg.SetPixel(xOffset + x, yOffset + y, baseImg.GetPixel(x, y).Overlay(overlay.GetPixelBilinear(Math.Abs((float)(mirrorX - x) / w), Math.Abs((float)(mirrorY - y) / h))));
                 }
             }
+
+            // This code only runs if we are extending the texture outwards.
+            if (extend)
+            {
+                // This code extends the final pixel border outwards to help
+                // with mip maps.
+                // `i < borderSize` is the format.
+                for (int i = 0; i < 3; ++i)
+                {
+                    // Do the 4 corners.
+                    baseImg.SetPixel(xOffset - (1 + i), yOffset - (1 + i), baseImg.GetPixel(xOffset, yOffset));
+                    baseImg.SetPixel(xOffset + targetX + i, yOffset - (1 + i), baseImg.GetPixel(xOffset + targetX - 1, yOffset));
+                    baseImg.SetPixel(xOffset - (1 + i), yOffset + targetY, baseImg.GetPixel(xOffset, yOffset + targetY - 1));
+                    baseImg.SetPixel(xOffset + targetX + i, yOffset + targetY + i, baseImg.GetPixel(xOffset + targetX - 1, yOffset + targetY - 1));
+
+                    for (int x = xOffset; x < xOffset + targetX; ++x)
+                    {
+                        baseImg.SetPixel(x, yOffset - (1 + i), baseImg.GetPixel(x, yOffset));
+                        baseImg.SetPixel(x, yOffset + targetY + i, baseImg.GetPixel(x, yOffset + targetY - 1));
+                    }
+
+                    for (int y = yOffset; y < yOffset + targetY; ++y)
+                    {
+                        baseImg.SetPixel(xOffset - (1 + i), y, baseImg.GetPixel(xOffset, y));
+                        baseImg.SetPixel(xOffset + targetX + i, y, baseImg.GetPixel(xOffset + targetX - 1, y));
+                    }
+                }
+            }
+
             baseImg.Apply();
         }
 
