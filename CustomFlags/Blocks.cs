@@ -65,10 +65,8 @@ namespace DestinyCustomBlocks
 
         void ICustomBlock.SwitchMipMapState(bool state)
         {
-            Debug.Log($"Switch called on {this}");
             if (this.occupyingComponent)
             {
-                Debug.Log($"Occupying Component found on {this}");
                 Material mat = CustomBlocks.UseMipMaps ? this.autoResolutionMat : this.fullResolutionMat;
                 foreach(int i in this.RendererIndicies)
                 {
