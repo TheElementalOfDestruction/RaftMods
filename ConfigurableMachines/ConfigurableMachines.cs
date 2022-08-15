@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
+
 public class ConfigMachines : Mod
 {
     public static JsonModInfo modInfo;
@@ -466,57 +467,6 @@ public class ConfigMachines : Mod
     {
         ConfigMachines.UpdateAll();
     }
-
-    // Harmony Patches.
-
-    [HarmonyPatch(typeof(CookingSlot), "Awake")]
-    public class Patch_CookingSlotAwake
-    {
-        static void Postfix(ref CookingSlot __instance)
-        {
-            // On awake, add to the dictionary. This will update it.
-            ConfigMachines.AddCookingSlot(__instance);
-        }
-    }
-
-    // Electric purifier doesn't have an awake, unfortunately.
-    [HarmonyPatch(typeof(Electric_Purifier), "IBlockPlaced.OnBlockPlacedInterface")]
-    public class Patch_ElectricPurifierAwake
-    {
-        static void Postfix(ref Electric_Purifier __instance)
-        {
-            // On awake, add to the dictionary. This will update it.
-            ConfigMachines.AddElectricPurifier(__instance);
-        }
-    }
-
-    [HarmonyPatch(typeof(MotorWheel), "Awake")]
-    public class Patch_EngineAwake
-    {
-        static void Postfix(ref MotorWheel __instance)
-        {
-            // On awake, add to the dictionary. This will update it.
-            ConfigMachines.AddEngine(__instance);
-        }
-    }
-
-    // This patch is how we handle not using fuel.
-    [HarmonyPatch(typeof(Tank), "ModifyTank")]
-    public class Patch_EngineConsumeFuel
-    {
-        static bool Prefix(ref Tank __instance, ref float amount)
-        {
-            // Check to see if it is the right tank.
-            if (__instance is MotorwheelFuelTank)
-            {
-                if (amount < 0f && ConfigMachines.ExtraSettingsAPI_Settings.GetCheckbox("engineDontUseFuel"))
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-    }
 }
 
 
@@ -539,13 +489,15 @@ public class EngineData
 
 public class Settings
 {
-    private Dictionary<string, float> sliderCache;
     private Dictionary<string, bool> checkboxCache;
+    private Dictionary<string, string> inputCache;
+    private Dictionary<string, float> sliderCache;
 
     public Settings()
     {
-        this.sliderCache = new Dictionary<string, float>();
         this.checkboxCache = new Dictionary<string, bool>();
+        this.inputCache = new Dictionary<string, string>();
+        this.sliderCache = new Dictionary<string, float>();
     }
 
     public float GetSlider(string name)
@@ -556,6 +508,21 @@ public class Settings
     public bool GetCheckbox(string name)
     {
         return this.checkboxCache.Get(name, false);
+    }
+
+    public string GetInput(string name)
+    {
+        return this.inputCache.Get(name, "");
+    }
+
+    // Convenience function. This will take a text input field and parse it as a
+    // float.
+    public float GetFloatInput(string name)
+    {
+        // This commented section is the new code that will be switched to. It
+        // actually needs to be fixed to handle locale though.
+        //return float.Parse(this.GetInput(name));
+        return this.GetSlider(name);
     }
 
     public void ExtraSettingsAPI_Load() // Occurs when the API loads the mod's settings
