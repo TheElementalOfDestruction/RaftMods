@@ -545,7 +545,7 @@ namespace DestinyCustomBlocks
             customBlock.settings_Inventory.Description = data[4];
 
             // Localization stuff.
-            customBlock.settings_Inventory.LocalizationTerm = "Item/destiny_CustomFlag";
+            customBlock.settings_Inventory.LocalizationTerm = $"Item/{data[0]}";
             var language = new LanguageSourceData()
             {
                 mDictionary = new Dictionary<string, TermData>
