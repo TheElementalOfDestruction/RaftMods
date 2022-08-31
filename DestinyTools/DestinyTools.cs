@@ -1,14 +1,21 @@
+using HarmonyLib;
+using Steamworks;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+
 
 public class DestinyTools : Mod
 {
     private static Block startingBlock;
     private static Block endingBlock;
+    private static Raft_Network network;
 
     public void Start()
     {
+        DestinyTools.startingBlock = null;
+        DestinyTools.endingBlock = null;
+        DestinyTools.network = ComponentManager<Raft_Network>.Value;
         Debug.Log("DestinyTools has been loaded.");
     }
 
@@ -37,6 +44,8 @@ public class DestinyTools : Mod
         RAPI.GetLocalPlayer().Stats.stat_hunger.Consume(1000, 1000, false);
         RAPI.GetLocalPlayer().Stats.stat_thirst.Consume(1000, 1000, false);
 
+        DestinyTools.SendRevivePackets();
+
         return "Player fully revived.";
     }
 
@@ -46,6 +55,8 @@ public class DestinyTools : Mod
         // Really not a complicated command given the Raft code has something
         // for this.
         RAPI.GetLocalPlayer().PlayerScript.RespawnWithoutBed(false);
+
+        DestinyTools.SendRevivePackets();
         return "Player revived.";
     }
 
@@ -184,5 +195,25 @@ public class DestinyTools : Mod
         }
 
         return (true, block, block.transform.localPosition);
+    }
+
+    /*
+     * Syncronizes reviving with other players.
+     */
+    private static void SendRevivePackets()
+    {
+        var pn = Traverse.Create(RAPI.GetLocalPlayer().PlayerScript).Field("playerNetwork").GetValue<Network_Player>();
+        var messageRevStart = new Message_NetworkBehaviour(Messages.Respawn_Start, pn);
+        var messageRevCompl = new Message_NetworkBehaviour(Messages.Respawn_Complete, pn);
+        if (Raft_Network.IsHost)
+        {
+            DestinyTools.network.RPC(messageRevStart, Target.Other, EP2PSend.k_EP2PSendReliable, NetworkChannel.Channel_Game);
+            DestinyTools.network.RPC(messageRevCompl, Target.Other, EP2PSend.k_EP2PSendReliable, NetworkChannel.Channel_Game);
+        }
+        else
+        {
+            pn.SendP2P(messageRevStart, EP2PSend.k_EP2PSendReliable, NetworkChannel.Channel_Game);
+            pn.SendP2P(messageRevCompl, EP2PSend.k_EP2PSendReliable, NetworkChannel.Channel_Game);
+        }
     }
 }

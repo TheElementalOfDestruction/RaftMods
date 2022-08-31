@@ -88,6 +88,14 @@ namespace DestinyCustomBlocks
             },
         };
 
+        public static readonly Dictionary<BlockType, PosterData> POSTER_DATA = new Dictionary<BlockType, PosterData>()
+        {
+            { BlockType.POSTER_480_270, new PosterData("Poster480,270", 480, 270, 0.5f) },
+            { BlockType.POSTER_960_540, new PosterData("Poster960,540", 960, 540, 1f) },
+            { BlockType.POSTER_1280_720, new PosterData("Poster1280,720", 1280, 720, 1.33333333f) },
+            { BlockType.POSTER_1920_1080, new PosterData("Poster1920,1080", 1920, 1080, 2f) },
+        };
+
         public static CustomBlocks instance;
         public static JsonModInfo modInfo;
 
@@ -226,6 +234,17 @@ namespace DestinyCustomBlocks
                 yield break;
             }
 
+            try
+            {
+                CustomBlocks.SetupPosters();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+                notification.Close();
+                yield break;
+            }
+
             CustomBlocks.Log("Mod has been loaded.");
 
             notification.Close();
@@ -271,6 +290,14 @@ namespace DestinyCustomBlocks
             this.AddBaseTextures(bt, originalMat, $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
             this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
             this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
+        }
+
+        private static void SetupPosters()
+        {
+            foreach (var kvPair in CustomBlocks.POSTER_DATA)
+            {
+
+            }
         }
 
         /*
@@ -995,6 +1022,34 @@ namespace DestinyCustomBlocks
             }
         }
 
+        [ConsoleCommand(name: "replaceMesh", docs: "")]
+        public static void Test()
+        {
+            try
+            {
+                PosterData pd = new PosterData("dasf", 300, 300, 0.5f);
+                Mesh mesh = pd.CreateMesh();
+
+                Debug.Log(23);
+                var a = FindObjectOfType<Block_CustomRugSmall>();
+                Debug.Log(42);
+                var b = a.GetComponentInChildren<MeshFilter>();
+                Debug.Log(243);
+                b.mesh = mesh;
+                Debug.Log(245);
+
+
+                foreach(Vector2 v in pd.uvs)
+                {
+                    Debug.Log(v);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+            }
+        }
+
         public enum BlockType
         {
             BED,
@@ -1026,6 +1081,98 @@ namespace DestinyCustomBlocks
                 this.widthHeight = widthHeight;
                 this.destXY = destXY;
                 this.rotation = rotation;
+            }
+        }
+
+        struct PosterData
+        {
+            public int widthPixels;
+            public int heightPixels;
+            public float widthBlock;
+            public float meshWidth;
+            public float meshHeight;
+            public Vector2[] uvs;
+            public int textureSize;
+            public string name;
+
+            public PosterData(string name, int widthPixels, int heightPixels, float widthBlock)
+            {
+                this.widthPixels = widthPixels;
+                this.heightPixels = heightPixels;
+                this.widthBlock = widthBlock;
+                this.name = name;
+
+                // Calculations.
+                this.meshWidth = widthBlock;
+                this.meshHeight =  heightPixels * (widthBlock / (widthPixels));
+                int biggestSizePixels = widthPixels > heightPixels ? widthPixels : heightPixels;
+
+                if (biggestSizePixels > 4000)
+                {
+                    throw new Exception("Height or width was greater than 4000");
+                }
+
+                // Determine the width and height to use for the texture.
+                if (biggestSizePixels <= 512)
+                {
+                    this.textureSize = 512;
+                }
+                else if (biggestSizePixels <= 1024)
+                {
+                    this.textureSize = 1024;
+                }
+                else if (biggestSizePixels <= 2048)
+                {
+                    this.textureSize = 2048;
+                }
+                else
+                {
+                    this.textureSize = 4096;
+                }
+
+
+                float uvTop = (heightPixels - 1) / (float)(this.textureSize - 1);
+                float uvBottom = 0;
+                float uvLeft = 0;
+                float uvRight = (widthPixels - 1) / (float)(this.textureSize - 1);
+
+                this.uvs = new Vector2[] {
+                    new Vector2(uvLeft, uvTop),
+                    new Vector2(uvRight, uvTop),
+                    new Vector2(uvRight, uvBottom),
+                    new Vector2(uvLeft, uvBottom),
+                    new Vector2(uvRight, uvTop),
+                    new Vector2(uvLeft, uvTop),
+                    new Vector2(uvLeft, uvBottom),
+                    new Vector2(uvRight, uvBottom)
+                };
+                Debug.Log($"{widthPixels} {this.textureSize} {uvTop} {this.uvs[0]}");
+            }
+
+            public Mesh CreateMesh()
+            {
+                Mesh mesh = new Mesh();
+                mesh.vertices = new Vector3[]
+                {
+                    new Vector3(0, this.meshHeight, 0),
+                    new Vector3(this.meshWidth, this.meshHeight, 0),
+                    new Vector3(this.meshWidth, 0, 0),
+                    new Vector3(0, 0, 0),
+                    new Vector3(this.meshWidth, this.meshHeight, 0),
+                    new Vector3(0, this.meshHeight, 0),
+                    new Vector3(0, 0, 0),
+                    new Vector3(this.meshWidth, 0, 0),
+                };
+                mesh.triangles = new int[] { 0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7 };
+                mesh.uv = this.uvs;
+
+                return mesh;
+            }
+
+
+            public void AdjustItemBase(Item_Base item)
+            {
+                
             }
         }
     }
