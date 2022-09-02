@@ -51,6 +51,10 @@ namespace DestinyCustomBlocks
             { BlockType.RUG_BIG, (7, 7) },
             { BlockType.RUG_SMALL, (632, 712) },
             { BlockType.SAIL, (3, 132) },
+            { BlockType.POSTER_H_16_9, (-2, -2) },
+            { BlockType.POSTER_V_9_16, (-2, -2) },
+            { BlockType.POSTER_H_4_3, (-2, -2) },
+            { BlockType.POSTER_V_3_4, (-2, -2) },
         };
         public static readonly Dictionary<BlockType, (int, int)> SIZES = new Dictionary<BlockType, (int, int)>()
         {
@@ -62,6 +66,11 @@ namespace DestinyCustomBlocks
             { BlockType.RUG_BIG, (627, 330) },
             { BlockType.RUG_SMALL, (385, 253) },
             { BlockType.SAIL, (794, 674) },
+            { BlockType.POSTER_H_16_9, (1920, 1080) },
+            { BlockType.POSTER_V_9_16, (1080, 1920) },
+            { BlockType.POSTER_H_4_3, (1440, 1080) },
+            { BlockType.POSTER_V_3_4, (1080, 1440) },
+
         };
         // Dictionary to tell what axis to mirror images on. Result is a tuple
         // of whether to mirror the x and whether to mirror the y.
@@ -75,6 +84,10 @@ namespace DestinyCustomBlocks
             { BlockType.RUG_BIG, (false, false) },
             { BlockType.RUG_SMALL, (false, false) },
             { BlockType.SAIL, (true, false) },
+            { BlockType.POSTER_H_16_9, (false, false) },
+            { BlockType.POSTER_V_9_16, (false, false) },
+            { BlockType.POSTER_H_4_3, (false, false) },
+            { BlockType.POSTER_V_3_4, (false, false) },
         };
 
         public static readonly Dictionary<BlockType, SplitImageData[]> SPLIT_IMAGES = new Dictionary<BlockType, SplitImageData[]>()
@@ -90,14 +103,19 @@ namespace DestinyCustomBlocks
 
         public static readonly Dictionary<BlockType, PosterData> POSTER_DATA = new Dictionary<BlockType, PosterData>()
         {
-            { BlockType.POSTER_480_270, new PosterData("Poster480,270", 480, 270, 0.5f) },
-            { BlockType.POSTER_960_540, new PosterData("Poster960,540", 960, 540, 1f) },
-            { BlockType.POSTER_1280_720, new PosterData("Poster1280,720", 1280, 720, 1.33333333f) },
-            { BlockType.POSTER_1920_1080, new PosterData("Poster1920,1080", 1920, 1080, 2f) },
+            { BlockType.POSTER_H_16_9, new PosterData("POSTER_H_16_9", 1920, 1080, 2f) },
+            { BlockType.POSTER_V_9_16, new PosterData("POSTER_V_9_16", 1080, 1920, 1.125f) },
+            { BlockType.POSTER_H_4_3, new PosterData("POSTER_H_4_3", 1440, 1080, 1.1875f) },
+            { BlockType.POSTER_V_3_4, new PosterData("POSTER_V_3_4", 1080, 1440, 1.125f) },
+        };
+        public static readonly Dictionary<BlockType, string[]> POSTER_STRINGS = new Dictionary<BlockType, string[]>()
+        {
+
         };
 
         public static CustomBlocks instance;
         public static JsonModInfo modInfo;
+        public static Shader shader;
 
         private static GameObject menu;
         private static GameObject menuAsset;
@@ -112,8 +130,7 @@ namespace DestinyCustomBlocks
         // Dictionary for the default sprites.
         public Dictionary<BlockType, Sprite> defaultSprites;
 
-        private Shader shader;
-        private Item_Base[] customItems;
+        private List<Item_Base> customItems;
         private Harmony harmony;
         private Transform prefabHolder;
         private AssetBundle bundle;
@@ -181,7 +198,7 @@ namespace DestinyCustomBlocks
                 DontDestroyOnLoad(this.prefabHolder.gameObject);
 
                 // First thing is first, let's fetch our shader from the game.
-                this.shader = Shader.Find(" BlockPaint");
+                CustomBlocks.shader = Shader.Find(" BlockPaint");
 
                 // Second, setup most of the materials using the basic methods.
                 this.SetupBasicBlockData(BlockType.BED, "bed", this.GetOriginalMaterial(BED_ID));
@@ -193,7 +210,8 @@ namespace DestinyCustomBlocks
                 this.SetupBasicBlockData(BlockType.SAIL, "sail", this.GetOriginalMaterial(SAIL_ID));
 
                 // Create the custom block item bases.
-                this.customItems = new Item_Base[] {
+                this.customItems = new List<Item_Base>()
+                {
                     this.CreateCustomBedItem(),
                     this.CreateCustomCurtainHItem(),
                     this.CreateCustomCurtainVItem(),
@@ -203,8 +221,10 @@ namespace DestinyCustomBlocks
                     this.CreateCustomSailItem(),
                 };
 
+                this.SetupPosters();
+
                 // Register the items.
-                Array.ForEach(this.customItems, x => RAPI.RegisterItem(x));
+                Array.ForEach(this.customItems.ToArray(), x => RAPI.RegisterItem(x));
             }
             catch (Exception e)
             {
@@ -234,16 +254,7 @@ namespace DestinyCustomBlocks
                 yield break;
             }
 
-            try
-            {
-                CustomBlocks.SetupPosters();
-            }
-            catch (Exception e)
-            {
-                Debug.LogError(e);
-                notification.Close();
-                yield break;
-            }
+
 
             CustomBlocks.Log("Mod has been loaded.");
 
@@ -292,11 +303,15 @@ namespace DestinyCustomBlocks
             this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
         }
 
-        private static void SetupPosters()
+        private void SetupPosters()
         {
-            foreach (var kvPair in CustomBlocks.POSTER_DATA)
+            foreach (BlockType bt in POSTER_DATA.Keys)
             {
-
+                PosterData pd = POSTER_DATA[bt];
+                this.AddBaseTextures(bt, pd.CreateMaterial(), $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
+                this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
+                this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
+                CustomBlocks.customItems.Add(this.CreateGenericCustomPoster<>())
             }
         }
 
@@ -395,7 +410,7 @@ namespace DestinyCustomBlocks
             Graphics.CopyTexture(this.basePaints[bt], paint);
 
             // Create and setup our material.
-            Material mat = new Material(this.shader);
+            Material mat = new Material(CustomBlocks.shader);
             mat.SetTexture("_Diffuse", diffuse);
             mat.SetTexture("_MetallicRPaintMaskGSmoothnessA", paint);
             mat.SetTexture("_Normal", normal);
@@ -608,6 +623,94 @@ namespace DestinyCustomBlocks
                     DestroyImmediate(originalNb);
 
                     cb.SetImageData(new byte[0]);
+                }
+            }
+
+            Traverse.Create(customBlock.settings_buildable).Field("blockPrefabs").SetValue(blocks);
+
+            foreach (var q in Resources.FindObjectsOfTypeAll<SO_BlockQuadType>())
+                if (q.AcceptsBlock(originalItem))
+                    Traverse.Create(q).Field("acceptableBlockTypes").GetValue<List<Item_Base>>().Add(customBlock);
+
+            return customBlock;
+        }
+
+        private Item_Base CreateGenericCustomPoster<BlockClass, NetworkClass>(int originalID, int newID, string[] data, PosterData pd, CostMultiple[] recipe, CraftingCategory craftCat) where BlockClass : Block_CustomBlock_Base where NetworkClass : MonoBehaviour_Network
+        {
+            // Create a clone of the regular flag.
+            Item_Base originalItem = ItemManager.GetItemByIndex(originalID);
+            Item_Base customBlock = ScriptableObject.CreateInstance<Item_Base>();
+            customBlock.Initialize(newID, data[0], 1);
+            customBlock.settings_buildable = originalItem.settings_buildable.Clone();
+            customBlock.settings_consumeable = originalItem.settings_consumeable.Clone();
+            customBlock.settings_cookable = originalItem.settings_cookable.Clone();
+            customBlock.settings_equipment = originalItem.settings_equipment.Clone();
+            customBlock.settings_Inventory = originalItem.settings_Inventory.Clone();
+            customBlock.settings_recipe = originalItem.settings_recipe.Clone();
+            customBlock.settings_usable = originalItem.settings_usable.Clone();
+
+            Block[] blocks = customBlock.settings_buildable.GetBlockPrefabs().Clone() as Block[];
+
+            // Set the block to not be paintable.
+            Traverse.Create(customBlock.settings_buildable).Field("primaryPaintAxis").SetValue(Axis.None);
+
+            // Setup the recipe.
+            customBlock.SetRecipe(recipe, craftCat, 1, false, data[2], 1);
+            var trav = Traverse.Create(customBlock.settings_recipe);
+            trav.Field("_hiddenInResearchTable").SetValue(false);
+            trav.Field("skins").SetValue(new Item_Base[0]);
+            trav.Field("baseSkinItem").SetValue(null);
+
+            // Set the display stuff.
+            customBlock.settings_Inventory.DisplayName = data[1];
+            customBlock.settings_Inventory.Description = data[4];
+
+            // Localization stuff.
+            customBlock.settings_Inventory.LocalizationTerm = $"Item/{data[0]}";
+            var language = new LanguageSourceData()
+            {
+                mDictionary = new Dictionary<string, TermData>
+                {
+                    [$"Item/{data[0]}"] = new TermData() { Languages = new[] { $"{data[1]}@{data[4]}" } },
+                    [$"CraftingSub/{data[2]}"] = new TermData() { Languages = new[] { data[3] } }
+                },
+                mLanguages = new List<LanguageData> { new LanguageData() { Code = "en", Name = "English" } }
+            };
+            LocalizationManager.Sources.Add(language);
+            Traverse.Create(typeof(LocalizationManager)).Field("OnLocalizeEvent").GetValue<LocalizationManager.OnLocalizeCallback>().Invoke();
+
+
+            // Now, we need to replace Block with BlockType;
+            for (int i = 0; i < blocks.Length; ++i)
+            {
+                if (blocks[i])
+                {
+                    // Based on some of Aidan's code.
+                    var blockPrefab = Instantiate(blocks[i], this.prefabHolder, false);
+                    blockPrefab.name = $"Block_CustomFlag_{i}";
+                    var cb = blockPrefab.gameObject.AddComponent<BlockClass>();
+                    cb.CopyFieldsOf(blockPrefab);
+                    cb.ReplaceValues(blockPrefab, cb);
+                    blockPrefab.ReplaceValues(originalItem, customBlock);
+                    blocks[i] = cb;
+                    DestroyImmediate(blockPrefab);
+
+                    cb.gameObject.AddComponent<RaycastInteractable>();
+                    var c = cb.gameObject.AddComponent<BoxCollider>();
+                    pd.AdjustBoxCollider(cb);
+
+                    c.isTrigger = true;
+                    c.enabled = false;
+                    c.gameObject.layer = 10;
+                    cb.onoffColliders = cb.onoffColliders.Extend(c);
+
+                    var nb = cb.gameObject.AddComponent<NetworkClass>();
+                    cb.networkedBehaviour = nb;
+                    cb.networkType = NetworkType.NetworkBehaviour;
+
+                    cb.GetComponent<MeshFilter>().mesh = pd.CreateMesh();
+
+                    cb.ImageData = new byte[0];
                 }
             }
 
@@ -918,13 +1021,18 @@ namespace DestinyCustomBlocks
         private static void PlaceImageInTexture(Texture2D dest, Texture2D src, BlockType bt)
         {
             // A negative position means it's a split image.
-            if (LOCATIONS[bt].Item1 < 0)
+            switch(LOCATIONS[bt].Item1)
             {
-                CustomBlocks.PlaceSplitImageInTexture(dest, src, bt);
-            }
-            else
-            {
-                dest.Edit(src, LOCATIONS[bt].Item1, LOCATIONS[bt].Item2, SIZES[bt].Item1, SIZES[bt].Item2, bt, true);
+                case -1:
+                    CustomBlocks.PlaceSplitImageInTexture(dest, src, bt);
+                    break;
+                case -2:
+                    PosterData pd = POSTER_DATA[bt];
+                    dest.Edit(src, 0, 0, pd.widthPixels, pd.heightPixels, bt, true);
+                    break;
+                default:
+                    dest.Edit(src, LOCATIONS[bt].Item1, LOCATIONS[bt].Item2, SIZES[bt].Item1, SIZES[bt].Item2, bt, true);
+                    break;
             }
         }
 
@@ -1030,19 +1138,10 @@ namespace DestinyCustomBlocks
                 PosterData pd = new PosterData("dasf", 300, 300, 0.5f);
                 Mesh mesh = pd.CreateMesh();
 
-                Debug.Log(23);
                 var a = FindObjectOfType<Block_CustomRugSmall>();
-                Debug.Log(42);
                 var b = a.GetComponentInChildren<MeshFilter>();
-                Debug.Log(243);
                 b.mesh = mesh;
-                Debug.Log(245);
-
-
-                foreach(Vector2 v in pd.uvs)
-                {
-                    Debug.Log(v);
-                }
+                pd.AdjustBoxCollider(a);
             }
             catch (Exception e)
             {
@@ -1059,6 +1158,10 @@ namespace DestinyCustomBlocks
             RUG_BIG,
             RUG_SMALL,
             SAIL,
+            POSTER_H_16_9,
+            POSTER_V_9_16,
+            POSTER_H_4_3,
+            POSTER_V_3_4,
             // Special value used for the edit function to not mirror.
             NONE
         }
@@ -1091,6 +1194,10 @@ namespace DestinyCustomBlocks
             public float widthBlock;
             public float meshWidth;
             public float meshHeight;
+            public float meshTop;
+            public float meshBottom;
+            public float meshRight;
+            public float meshLeft;
             public Vector2[] uvs;
             public int textureSize;
             public string name;
@@ -1146,22 +1253,34 @@ namespace DestinyCustomBlocks
                     new Vector2(uvLeft, uvBottom),
                     new Vector2(uvRight, uvBottom)
                 };
-                Debug.Log($"{widthPixels} {this.textureSize} {uvTop} {this.uvs[0]}");
+
+                this.meshTop = this.meshHeight / 2;
+                this.meshBottom = -1 * this.meshTop;
+                this.meshRight = this.meshWidth / 2;
+                this.meshLeft = -1 * this.meshRight;
+            }
+
+            public void AdjustBoxCollider(Block block)
+            {
+                var collider = block.GetComponent<BoxCollider>();
+                collider.size = new Vector3(this.meshWidth, this.meshHeight, 0.01f);
+                collider.center = Vector3.zero;
             }
 
             public Mesh CreateMesh()
             {
                 Mesh mesh = new Mesh();
+
                 mesh.vertices = new Vector3[]
                 {
-                    new Vector3(0, this.meshHeight, 0),
-                    new Vector3(this.meshWidth, this.meshHeight, 0),
-                    new Vector3(this.meshWidth, 0, 0),
-                    new Vector3(0, 0, 0),
-                    new Vector3(this.meshWidth, this.meshHeight, 0),
-                    new Vector3(0, this.meshHeight, 0),
-                    new Vector3(0, 0, 0),
-                    new Vector3(this.meshWidth, 0, 0),
+                    new Vector3(this.meshLeft, this.meshTop, 0),
+                    new Vector3(this.meshRight, this.meshTop, 0),
+                    new Vector3(this.meshRight, this.meshBottom, 0),
+                    new Vector3(this.meshLeft, this.meshBottom, 0),
+                    new Vector3(this.meshRight, this.meshTop, 0),
+                    new Vector3(this.meshLeft, this.meshTop, 0),
+                    new Vector3(this.meshLeft, this.meshBottom, 0),
+                    new Vector3(this.meshRight, this.meshBottom, 0),
                 };
                 mesh.triangles = new int[] { 0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7 };
                 mesh.uv = this.uvs;
@@ -1169,10 +1288,13 @@ namespace DestinyCustomBlocks
                 return mesh;
             }
 
-
-            public void AdjustItemBase(Item_Base item)
+            public Material CreateMaterial()
             {
-                
+                Material ret = new Material(CustomBlocks.Shader);
+                Texture2D temp = new Texture2D(this.textureSize, this.textureSize);
+                ret.SetTexture("_Diffuse", temp);
+                ret.SetTexture("_MetallicRPaintMaskGSmoothnessA", temp);
+                ret.SetTexture("_Normal", temp);
             }
         }
     }
