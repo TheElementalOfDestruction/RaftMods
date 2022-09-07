@@ -311,7 +311,7 @@ namespace DestinyCustomBlocks
                 this.AddBaseTextures(bt, pd.CreateMaterial(), $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
                 this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
                 this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
-                CustomBlocks.customItems.Add(this.CreateGenericCustomPoster<>())
+                CustomBlocks.customItems.Add(this.CreateGenericCustomPoster<CustomPoster, CustomBlock_Network>()); // Make sure to give correct block type.           
             }
         }
 
