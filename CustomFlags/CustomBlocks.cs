@@ -34,10 +34,10 @@ namespace DestinyCustomBlocks
             { BlockType.CURTAIN_V, (446, 25928) },
             { BlockType.RUG_BIG, (158, 25929) },
             { BlockType.RUG_SMALL, (439, 25930) },
-            { BlockType.POSTER_H_16_9, (TODO, 25931) },
-            { BlockType.POSTER_V_9_16, (TODO, 25932) },
-            { BlockType.POSTER_H_4_3, (TODO, 25932) },
-            { BlockType.POSTER_V_3_4, (TODO, 25932) },
+            { BlockType.POSTER_H_16_9, (352, 25931) },
+            { BlockType.POSTER_V_9_16, (352, 25932) },
+            { BlockType.POSTER_H_4_3, (352, 25932) },
+            { BlockType.POSTER_V_3_4, (352, 25932) },
         };
         private static readonly Dictionary<BlockType, string> FOLDER_NAMES = new Dictionary<BlockType, string>()
         {
@@ -49,10 +49,10 @@ namespace DestinyCustomBlocks
             { BlockType.CURTAIN_V, "curtain_v" },
             { BlockType.RUG_BIG, "rug_big" },
             { BlockType.RUG_SMALL, "rug_small" },
-            { BlockType.POSTER_H_16_9, "posterh169" },
-            { BlockType.POSTER_V_9_16, "posterv916" },
-            { BlockType.POSTER_H_4_3, "posterh43" },
-            { BlockType.POSTER_V_3_4, "posterv34" },
+            { BlockType.POSTER_H_16_9, "poster_h_16_9" },
+            { BlockType.POSTER_V_9_16, "poster_v_9_16" },
+            { BlockType.POSTER_H_4_3, "poster_h_4_3" },
+            { BlockType.POSTER_V_3_4, "poster_v_3_4" },
         };
 
         public static readonly int CUSTOM_BLOCK_ID_MIN = 25924;
@@ -126,7 +126,46 @@ namespace DestinyCustomBlocks
         };
         public static readonly Dictionary<BlockType, string[]> POSTER_STRINGS = new Dictionary<BlockType, string[]>()
         {
-
+            {
+                BlockType.POSTER_H_16_9, new string[]
+                {
+                    "destiny_CustomPoster_h_16_9",
+                    "Custom Poster (16:9)",
+                    "CustomPosters",
+                    "Custom Posters",
+                    "A customizable poster."
+                }
+            },
+            {
+                BlockType.POSTER_V_9_16, new string[]
+                {
+                    "destiny_CustomPoster_v_9_16",
+                    "Custom Poster (9:16)",
+                    "CustomPosters",
+                    "Custom Posters",
+                    "A customizable poster."
+                }
+            },
+            {
+                BlockType.POSTER_H_4_3, new string[]
+                {
+                    "destiny_CustomPoster_h_4_3",
+                    "Custom Poster (4:3)",
+                    "CustomPosters",
+                    "Custom Posters",
+                    "A customizable poster."
+                }
+            },
+            {
+                BlockType.POSTER_V_3_4, new string[]
+                {
+                    "destiny_CustomPoster_v_3_4",
+                    "Custom Poster (3:4)",
+                    "CustomPosters",
+                    "Custom Posters",
+                    "A customizable poster."
+                }
+            },
         };
 
         public static CustomBlocks instance;
@@ -217,13 +256,13 @@ namespace DestinyCustomBlocks
                 CustomBlocks.shader = Shader.Find(" BlockPaint");
 
                 // Second, setup most of the materials using the basic methods.
-                this.SetupBasicBlockData(BlockType.BED, "bed", this.GetOriginalMaterial(BED_ID));
-                this.SetupBasicBlockData(BlockType.CURTAIN_V, "curtain_v", this.GetOriginalMaterial(CURTAIN_VERTICAL_ID));
-                this.SetupBasicBlockData(BlockType.CURTAIN_H, "curtain_h", this.GetOriginalMaterial(CURTAIN_HORIZONTAL_ID));
-                this.SetupBasicBlockData(BlockType.FLAG, "flag", this.GetOriginalMaterial(FLAG_ID));
-                this.SetupBasicBlockData(BlockType.RUG_BIG, "rug_big", this.GetOriginalMaterial(RUG_BIG_ID));
-                this.SetupBasicBlockData(BlockType.RUG_SMALL, "rug_small", this.GetOriginalMaterial(RUG_SMALL_ID));
-                this.SetupBasicBlockData(BlockType.SAIL, "sail", this.GetOriginalMaterial(SAIL_ID));
+                this.SetupBasicBlockData(BlockType.BED);
+                this.SetupBasicBlockData(BlockType.CURTAIN_V);
+                this.SetupBasicBlockData(BlockType.CURTAIN_H);
+                this.SetupBasicBlockData(BlockType.FLAG);
+                this.SetupBasicBlockData(BlockType.RUG_BIG);
+                this.SetupBasicBlockData(BlockType.RUG_SMALL);
+                this.SetupBasicBlockData(BlockType.SAIL);
 
                 // Create the custom block item bases.
                 this.customItems = new List<Item_Base>()
@@ -270,8 +309,6 @@ namespace DestinyCustomBlocks
                 yield break;
             }
 
-
-
             CustomBlocks.Log("Mod has been loaded.");
 
             notification.Close();
@@ -312,22 +349,38 @@ namespace DestinyCustomBlocks
          * Performs serveral tasks, including the textures, material, and the
          * sprite.
          */
-        private void SetupBasicBlockData(BlockType bt, string imgDir, Material originalMat)
+        private void SetupBasicBlockData(BlockType bt)
         {
-            this.AddBaseTextures(bt, originalMat, $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
+            string imgDir = FOLDER_NAMES[bt];
+            this.AddBaseTextures(bt, this.GetOriginalMaterial(IDS[bt].Item1), $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
             this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
             this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
         }
 
         private void SetupPosters()
         {
+            // This is the recipe for the posters.
+            var recipe = new CraftingCost[]
+            {
+                new CostMultiple(new[] { ItemManager.GetItemByIndex() }, 5),
+                new CostMultiple(new[]
+                                 {
+                                    ItemManager.GetItemByIndex(104),
+                                    ItemManager.GetItemByIndex(105),
+                                    ItemManager.GetItemByIndex(106),
+                                    ItemManager.GetItemByIndex(107),
+                                    ItemManager.GetItemByIndex(108),
+                                 }, 5),
+            };
+
             foreach (BlockType bt in POSTER_DATA.Keys)
             {
                 PosterData pd = POSTER_DATA[bt];
+                string imgDir = FOLDER_NAMES[bt];
                 this.AddBaseTextures(bt, pd.CreateMaterial(), $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
                 this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
                 this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
-                CustomBlocks.customItems.Add(this.CreateGenericCustomPoster<Block_CustomPoster, CustomBlock_Network>(int originalID, int newID, string[] data, PosterData pd, CostMultiple[] recipe, CraftingCategory craftCat, BlockType bt)); // Make sure to give correct block type.
+                CustomBlocks.customItems.Add(this.CreateGenericCustomPoster<Block_CustomPoster, CustomBlock_Network>(IDS[bt].Item1, IDS[bt].Item2, POSTER_STRINGS[bt], pd, recipe, CraftingCategory craftCat, BlockType bt)); // Make sure to give correct block type.
             }
         }
 
@@ -754,7 +807,7 @@ namespace DestinyCustomBlocks
                 "Custom Bed",
                 "A customizable bed."
             };
-            return this.CreateGenericCustomItem<Block_CustomBed, CustomBlock_Network>(BED_ID, CUSTOM_BED_ITEM_ID, data, Vector3.zero, Vector3.zero, recipe, CraftingCategory.Other);
+            return this.CreateGenericCustomItem<Block_CustomBed, CustomBlock_Network>(IDS[BlockType.BED].Item1, IDS[BlockType.BED].Item2, data, Vector3.zero, Vector3.zero, recipe, CraftingCategory.Other);
         }
 
         private Item_Base CreateCustomCurtainHItem()
@@ -770,7 +823,7 @@ namespace DestinyCustomBlocks
                 "Custom Curtains",
                 "A customizable curtain."
             };
-            return this.CreateGenericCustomItemInteractable<Block_CustomCurtainH, CustomInteractableOC_Network>(CURTAIN_HORIZONTAL_ID, CUSTOM_CURTAIN_H_ITEM_ID, data, recipe, CraftingCategory.Decorations);
+            return this.CreateGenericCustomItemInteractable<Block_CustomCurtainH, CustomInteractableOC_Network>(IDS[BlockType.CURTAIN_H].Item1, IDS[BlockType.CURTAIN_H].Item2, data, recipe, CraftingCategory.Decorations);
         }
 
         private Item_Base CreateCustomCurtainVItem()
@@ -786,7 +839,7 @@ namespace DestinyCustomBlocks
                 "Custom Curtains",
                 "A customizable curtain."
             };
-            return this.CreateGenericCustomItemInteractable<Block_CustomCurtainV, CustomInteractableOC_Network>(CURTAIN_VERTICAL_ID, CUSTOM_CURTAIN_V_ITEM_ID, data, recipe, CraftingCategory.Decorations);
+            return this.CreateGenericCustomItemInteractable<Block_CustomCurtainV, CustomInteractableOC_Network>(IDS[BlockType.CURTAIN_V].Item1, IDS[BlockType.CURTAIN_V].Item1, data, recipe, CraftingCategory.Decorations);
         }
 
         /*
@@ -796,9 +849,9 @@ namespace DestinyCustomBlocks
         private Item_Base CreateCustomFlagItem()
         {
             // Create a clone of the regular flag.
-            Item_Base originalItem = ItemManager.GetItemByIndex(FLAG_ID);
+            Item_Base originalItem = ItemManager.GetItemByIndex(IDS[BlockType.FLAG].Item1);
             Item_Base customFlag = ScriptableObject.CreateInstance<Item_Base>();
-            customFlag.Initialize(CUSTOM_FLAG_ITEM_ID, "destiny_CustomFlag", 1);
+            customFlag.Initialize(IDS[BlockType.CURTAIN_H].Item2, "destiny_CustomFlag", 1);
             customFlag.settings_buildable = originalItem.settings_buildable.Clone();
             customFlag.settings_consumeable = originalItem.settings_consumeable.Clone();
             customFlag.settings_cookable = originalItem.settings_cookable.Clone();
@@ -909,7 +962,7 @@ namespace DestinyCustomBlocks
                 "Custom Rugs",
                 "A customizable rug."
             };
-            return this.CreateGenericCustomItem<Block_CustomRugBig, CustomBlock_Network>(RUG_BIG_ID, CUSTOM_RUG_BIG_ITEM_ID, data, new Vector3(1.4797308f, 0.14399316f, 2.736644f), new Vector3(0, 0.005513929f, 0), recipe, CraftingCategory.Decorations);
+            return this.CreateGenericCustomItem<Block_CustomRugBig, CustomBlock_Network>(IDS[BlockType.RUG_BIG].Item1, IDS[BlockType.RUG_BIG].Item1, data, new Vector3(1.4797308f, 0.14399316f, 2.736644f), new Vector3(0, 0.005513929f, 0), recipe, CraftingCategory.Decorations);
         }
 
         private Item_Base CreateCustomRugSmallItem()
@@ -925,7 +978,7 @@ namespace DestinyCustomBlocks
                 "Custom Rugs",
                 "A customizable rug."
             };
-            return this.CreateGenericCustomItem<Block_CustomRugSmall, CustomBlock_Network>(RUG_SMALL_ID, CUSTOM_RUG_SMALL_ITEM_ID, data, new Vector3(0.8902238f, 0.12493733f, 1.32783f), new Vector3(0, 0.005513929f, 0), recipe, CraftingCategory.Decorations);
+            return this.CreateGenericCustomItem<Block_CustomRugSmall, CustomBlock_Network>(IDS[BlockType.RUG_SMALL].Item1, IDS[BlockType.RUG_SMALL].Item1, data, new Vector3(0.8902238f, 0.12493733f, 1.32783f), new Vector3(0, 0.005513929f, 0), recipe, CraftingCategory.Decorations);
         }
 
         /*
@@ -935,9 +988,9 @@ namespace DestinyCustomBlocks
         private Item_Base CreateCustomSailItem()
         {
             // Create a clone of the regular flag.
-            Item_Base originalItem = ItemManager.GetItemByIndex(SAIL_ID);
+            Item_Base originalItem = ItemManager.GetItemByIndex(IDS[BlockType.SAIL].Item1);
             Item_Base customSail = ScriptableObject.CreateInstance<Item_Base>();
-            customSail.Initialize(CUSTOM_SAIL_ITEM_ID, "destiny_CustomSail", 1);
+            customSail.Initialize(IDS[BlockType.SAIL].Item1, "destiny_CustomSail", 1);
             customSail.settings_buildable = originalItem.settings_buildable.Clone();
             customSail.settings_consumeable = originalItem.settings_consumeable.Clone();
             customSail.settings_cookable = originalItem.settings_cookable.Clone();
