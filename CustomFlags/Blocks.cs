@@ -721,14 +721,14 @@ namespace DestinyCustomBlocks
             {
                 return this.bt;
             }
+        }
 
-            set
+        public void SetCustomBlockType(CustomBlocks.BlockType value)
+        {
+            if (!this.blockTypeSet)
             {
-                if (!this.blockTypeSet)
-                {
-                    this.bt = value;
-                    this.blockTypeSet = true;
-                }
+                this.bt = value;
+                this.blockTypeSet = true;
             }
         }
     }

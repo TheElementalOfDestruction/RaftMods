@@ -360,7 +360,7 @@ namespace DestinyCustomBlocks
         private void SetupPosters()
         {
             // This is the recipe for the posters.
-            var recipe = new CraftingCost[]
+            var recipe = new CostMultiple[]
             {
                 new CostMultiple(new[] { ItemManager.GetItemByIndex() }, 5),
                 new CostMultiple(new[]
@@ -380,7 +380,7 @@ namespace DestinyCustomBlocks
                 this.AddBaseTextures(bt, pd.CreateMaterial(), $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
                 this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
                 this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
-                CustomBlocks.customItems.Add(this.CreateGenericCustomPoster<Block_CustomPoster, CustomBlock_Network>(IDS[bt].Item1, IDS[bt].Item2, POSTER_STRINGS[bt], pd, recipe, CraftingCategory craftCat, BlockType bt)); // Make sure to give correct block type.
+                this.customItems.Add(this.CreateGenericCustomPoster<Block_CustomPoster, CustomBlock_Network>(IDS[bt].Item1, IDS[bt].Item2, POSTER_STRINGS[bt], pd, recipe, CraftingCategory.Decorations, bt)); // Make sure to give correct block type.
             }
         }
 
@@ -1359,11 +1359,13 @@ namespace DestinyCustomBlocks
 
             public Material CreateMaterial()
             {
-                Material ret = new Material(CustomBlocks.Shader);
+                Material ret = new Material(CustomBlocks.shader);
                 Texture2D temp = new Texture2D(this.textureSize, this.textureSize);
                 ret.SetTexture("_Diffuse", temp);
                 ret.SetTexture("_MetallicRPaintMaskGSmoothnessA", temp);
                 ret.SetTexture("_Normal", temp);
+
+                return ret;
             }
         }
     }
