@@ -23,24 +23,41 @@ namespace DestinyCustomBlocks
             * Allow for turning on and off mipmaps.
         */
 
-        private const int BED_ID = 448;
-        private const int CURTAIN_HORIZONTAL_ID = 447;
-        private const int CURTAIN_VERTICAL_ID = 446;
-        private const int FLAG_ID = 478;
-        private const int RUG_BIG_ID = 158;
-        private const int RUG_SMALL_ID = 439;
-        private const int SAIL_ID = 126;
+        // Original id and new id.
+        private static readonly Dictionary<BlockType, (int, int)> IDS = new Dictionary<BlockType, (int, int)>()
+        {
+            // In little endian this would represent the string "De";
+            { BlockType.FLAG, (478, 25924) },
+            { BlockType.SAIL, (126, 25925) },
+            { BlockType.BED, (448, 25926) },
+            { BlockType.CURTAIN_H, (447, 25927) },
+            { BlockType.CURTAIN_V, (446, 25928) },
+            { BlockType.RUG_BIG, (158, 25929) },
+            { BlockType.RUG_SMALL, (439, 25930) },
+            { BlockType.POSTER_H_16_9, (TODO, 25931) },
+            { BlockType.POSTER_V_9_16, (TODO, 25932) },
+            { BlockType.POSTER_H_4_3, (TODO, 25932) },
+            { BlockType.POSTER_V_3_4, (TODO, 25932) },
+        };
+        private static readonly Dictionary<BlockType, string> FOLDER_NAMES = new Dictionary<BlockType, string>()
+        {
+            // In little endian this would represent the string "De";
+            { BlockType.FLAG, "flag" },
+            { BlockType.SAIL, "sail" },
+            { BlockType.BED, "bed" },
+            { BlockType.CURTAIN_H, "curtain_h" },
+            { BlockType.CURTAIN_V, "curtain_v" },
+            { BlockType.RUG_BIG, "rug_big" },
+            { BlockType.RUG_SMALL, "rug_small" },
+            { BlockType.POSTER_H_16_9, "posterh169" },
+            { BlockType.POSTER_V_9_16, "posterv916" },
+            { BlockType.POSTER_H_4_3, "posterh43" },
+            { BlockType.POSTER_V_3_4, "posterv34" },
+        };
 
-        // In little endian this would represent the string "De";
-        public static readonly int CUSTOM_FLAG_ITEM_ID = 25924;
-        public static readonly int CUSTOM_SAIL_ITEM_ID = 25925;
-        public static readonly int CUSTOM_BED_ITEM_ID = 25926;
-        public static readonly int CUSTOM_CURTAIN_H_ITEM_ID = 25927;
-        public static readonly int CUSTOM_CURTAIN_V_ITEM_ID = 25928;
-        public static readonly int CUSTOM_RUG_BIG_ITEM_ID = 25929;
-        public static readonly int CUSTOM_RUG_SMALL_ITEM_ID = 25930;
-        public static readonly int CUSTOM_BLOCK_ID_MIN = CUSTOM_FLAG_ITEM_ID;
-        public static readonly int CUSTOM_BLOCK_ID_MAX = CUSTOM_RUG_SMALL_ITEM_ID;
+        public static readonly int CUSTOM_BLOCK_ID_MIN = 25924;
+        public static readonly int CUSTOM_BLOCK_ID_MAX = 25934;
+
         public static readonly Dictionary<BlockType, (int, int)> LOCATIONS = new Dictionary<BlockType, (int, int)>()
         {
             { BlockType.NONE, (0, 0) },
@@ -70,7 +87,6 @@ namespace DestinyCustomBlocks
             { BlockType.POSTER_V_9_16, (1080, 1920) },
             { BlockType.POSTER_H_4_3, (1440, 1080) },
             { BlockType.POSTER_V_3_4, (1080, 1440) },
-
         };
         // Dictionary to tell what axis to mirror images on. Result is a tuple
         // of whether to mirror the x and whether to mirror the y.
@@ -311,7 +327,7 @@ namespace DestinyCustomBlocks
                 this.AddBaseTextures(bt, pd.CreateMaterial(), $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
                 this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
                 this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
-                CustomBlocks.customItems.Add(this.CreateGenericCustomPoster<CustomPoster, CustomBlock_Network>()); // Make sure to give correct block type.           
+                CustomBlocks.customItems.Add(this.CreateGenericCustomPoster<Block_CustomPoster, CustomBlock_Network>(int originalID, int newID, string[] data, PosterData pd, CostMultiple[] recipe, CraftingCategory craftCat, BlockType bt)); // Make sure to give correct block type.
             }
         }
 
@@ -635,7 +651,7 @@ namespace DestinyCustomBlocks
             return customBlock;
         }
 
-        private Item_Base CreateGenericCustomPoster<BlockClass, NetworkClass>(int originalID, int newID, string[] data, PosterData pd, CostMultiple[] recipe, CraftingCategory craftCat) where BlockClass : Block_CustomBlock_Base where NetworkClass : MonoBehaviour_Network
+        private Item_Base CreateGenericCustomPoster<BlockClass, NetworkClass>(int originalID, int newID, string[] data, PosterData pd, CostMultiple[] recipe, CraftingCategory craftCat, BlockType bt) where BlockClass : Block_CustomBlock_Base where NetworkClass : MonoBehaviour_Network
         {
             // Create a clone of the regular flag.
             Item_Base originalItem = ItemManager.GetItemByIndex(originalID);

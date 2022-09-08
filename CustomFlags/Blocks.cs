@@ -710,6 +710,31 @@ namespace DestinyCustomBlocks
 
 
 
+    public class Block_CustomPoster : Block_CustomBlock_Base
+    {
+        protected bool blockTypeSet = false;
+        protected CustomBlocks.BlockType bt = CustomBlocks.BlockType.NONE;
+
+        public override CustomBlocks.BlockType CustomBlockType
+        {
+            get
+            {
+                return this.bt;
+            }
+
+            set
+            {
+                if (!this.blockTypeSet)
+                {
+                    this.bt = value;
+                    this.blockTypeSet = true;
+                }
+            }
+        }
+    }
+
+
+
     public class Block_CustomRugBig : Block_CustomBlock_Base
     {
         public override CustomBlocks.BlockType CustomBlockType
