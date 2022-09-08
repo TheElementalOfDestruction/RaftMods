@@ -36,8 +36,8 @@ namespace DestinyCustomBlocks
             { BlockType.RUG_SMALL, (439, 25930) },
             { BlockType.POSTER_H_16_9, (352, 25931) },
             { BlockType.POSTER_V_9_16, (352, 25932) },
-            { BlockType.POSTER_H_4_3, (352, 25932) },
-            { BlockType.POSTER_V_3_4, (352, 25932) },
+            { BlockType.POSTER_H_4_3, (352, 25933) },
+            { BlockType.POSTER_V_3_4, (352, 25934) },
         };
         private static readonly Dictionary<BlockType, string> FOLDER_NAMES = new Dictionary<BlockType, string>()
         {
@@ -280,6 +280,8 @@ namespace DestinyCustomBlocks
 
                 // Register the items.
                 Array.ForEach(this.customItems.ToArray(), x => RAPI.RegisterItem(x));
+
+                Debug.Log($"Created {this.defaultMaterials.Count} default materials.");
             }
             catch (Exception e)
             {
@@ -362,15 +364,15 @@ namespace DestinyCustomBlocks
             // This is the recipe for the posters.
             var recipe = new CostMultiple[]
             {
-                new CostMultiple(new[] { ItemManager.GetItemByIndex() }, 5),
-                new CostMultiple(new[]
+                new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 5),
+                /*new CostMultiple(new[]
                                  {
                                     ItemManager.GetItemByIndex(104),
                                     ItemManager.GetItemByIndex(105),
                                     ItemManager.GetItemByIndex(106),
                                     ItemManager.GetItemByIndex(107),
                                     ItemManager.GetItemByIndex(108),
-                                 }, 5),
+                                 }, 5),*/
             };
 
             foreach (BlockType bt in POSTER_DATA.Keys)
@@ -704,7 +706,7 @@ namespace DestinyCustomBlocks
             return customBlock;
         }
 
-        private Item_Base CreateGenericCustomPoster<BlockClass, NetworkClass>(int originalID, int newID, string[] data, PosterData pd, CostMultiple[] recipe, CraftingCategory craftCat, BlockType bt) where BlockClass : Block_CustomBlock_Base where NetworkClass : MonoBehaviour_Network
+        private Item_Base CreateGenericCustomPoster<BlockClass, NetworkClass>(int originalID, int newID, string[] data, PosterData pd, CostMultiple[] recipe, CraftingCategory craftCat, BlockType bt) where BlockClass : Block_CustomPoster where NetworkClass : MonoBehaviour_Network
         {
             // Create a clone of the regular flag.
             Item_Base originalItem = ItemManager.GetItemByIndex(originalID);
@@ -764,6 +766,8 @@ namespace DestinyCustomBlocks
                     blocks[i] = cb;
                     DestroyImmediate(blockPrefab);
 
+                    cb.SetCustomBlockType(bt);
+
                     cb.gameObject.AddComponent<RaycastInteractable>();
                     var c = cb.gameObject.AddComponent<BoxCollider>();
                     pd.AdjustBoxCollider(cb);
@@ -777,7 +781,9 @@ namespace DestinyCustomBlocks
                     cb.networkedBehaviour = nb;
                     cb.networkType = NetworkType.NetworkBehaviour;
 
-                    cb.GetComponent<MeshFilter>().mesh = pd.CreateMesh();
+                    MeshFilter filter = cb.GetComponentInChildren<MeshFilter>(true);
+
+                    filter.mesh = pd.CreateMesh();
 
                     cb.ImageData = new byte[0];
                 }
@@ -839,7 +845,7 @@ namespace DestinyCustomBlocks
                 "Custom Curtains",
                 "A customizable curtain."
             };
-            return this.CreateGenericCustomItemInteractable<Block_CustomCurtainV, CustomInteractableOC_Network>(IDS[BlockType.CURTAIN_V].Item1, IDS[BlockType.CURTAIN_V].Item1, data, recipe, CraftingCategory.Decorations);
+            return this.CreateGenericCustomItemInteractable<Block_CustomCurtainV, CustomInteractableOC_Network>(IDS[BlockType.CURTAIN_V].Item1, IDS[BlockType.CURTAIN_V].Item2, data, recipe, CraftingCategory.Decorations);
         }
 
         /*
@@ -851,7 +857,7 @@ namespace DestinyCustomBlocks
             // Create a clone of the regular flag.
             Item_Base originalItem = ItemManager.GetItemByIndex(IDS[BlockType.FLAG].Item1);
             Item_Base customFlag = ScriptableObject.CreateInstance<Item_Base>();
-            customFlag.Initialize(IDS[BlockType.CURTAIN_H].Item2, "destiny_CustomFlag", 1);
+            customFlag.Initialize(IDS[BlockType.FLAG].Item2, "destiny_CustomFlag", 1);
             customFlag.settings_buildable = originalItem.settings_buildable.Clone();
             customFlag.settings_consumeable = originalItem.settings_consumeable.Clone();
             customFlag.settings_cookable = originalItem.settings_cookable.Clone();
@@ -962,7 +968,7 @@ namespace DestinyCustomBlocks
                 "Custom Rugs",
                 "A customizable rug."
             };
-            return this.CreateGenericCustomItem<Block_CustomRugBig, CustomBlock_Network>(IDS[BlockType.RUG_BIG].Item1, IDS[BlockType.RUG_BIG].Item1, data, new Vector3(1.4797308f, 0.14399316f, 2.736644f), new Vector3(0, 0.005513929f, 0), recipe, CraftingCategory.Decorations);
+            return this.CreateGenericCustomItem<Block_CustomRugBig, CustomBlock_Network>(IDS[BlockType.RUG_BIG].Item1, IDS[BlockType.RUG_BIG].Item2, data, new Vector3(1.4797308f, 0.14399316f, 2.736644f), new Vector3(0, 0.005513929f, 0), recipe, CraftingCategory.Decorations);
         }
 
         private Item_Base CreateCustomRugSmallItem()
@@ -978,7 +984,7 @@ namespace DestinyCustomBlocks
                 "Custom Rugs",
                 "A customizable rug."
             };
-            return this.CreateGenericCustomItem<Block_CustomRugSmall, CustomBlock_Network>(IDS[BlockType.RUG_SMALL].Item1, IDS[BlockType.RUG_SMALL].Item1, data, new Vector3(0.8902238f, 0.12493733f, 1.32783f), new Vector3(0, 0.005513929f, 0), recipe, CraftingCategory.Decorations);
+            return this.CreateGenericCustomItem<Block_CustomRugSmall, CustomBlock_Network>(IDS[BlockType.RUG_SMALL].Item1, IDS[BlockType.RUG_SMALL].Item2, data, new Vector3(0.8902238f, 0.12493733f, 1.32783f), new Vector3(0, 0.005513929f, 0), recipe, CraftingCategory.Decorations);
         }
 
         /*
@@ -990,7 +996,7 @@ namespace DestinyCustomBlocks
             // Create a clone of the regular flag.
             Item_Base originalItem = ItemManager.GetItemByIndex(IDS[BlockType.SAIL].Item1);
             Item_Base customSail = ScriptableObject.CreateInstance<Item_Base>();
-            customSail.Initialize(IDS[BlockType.SAIL].Item1, "destiny_CustomSail", 1);
+            customSail.Initialize(IDS[BlockType.SAIL].Item2, "destiny_CustomSail", 1);
             customSail.settings_buildable = originalItem.settings_buildable.Clone();
             customSail.settings_consumeable = originalItem.settings_consumeable.Clone();
             customSail.settings_cookable = originalItem.settings_cookable.Clone();
@@ -1256,7 +1262,7 @@ namespace DestinyCustomBlocks
             }
         }
 
-        struct PosterData
+        public struct PosterData
         {
             public int widthPixels;
             public int heightPixels;
@@ -1333,7 +1339,7 @@ namespace DestinyCustomBlocks
             {
                 var collider = block.GetComponent<BoxCollider>();
                 collider.size = new Vector3(this.meshWidth, this.meshHeight, 0.01f);
-                collider.center = Vector3.zero;
+                collider.center = new Vector3(0, 0, 0.01f);
             }
 
             public Mesh CreateMesh()

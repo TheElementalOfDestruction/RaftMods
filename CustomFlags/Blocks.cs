@@ -129,58 +129,66 @@ namespace DestinyCustomBlocks
         protected virtual bool PatchRenderer()
         {
             // A null value is completely invalid.
-            if (this.imageData == null)
+            try
             {
-                return false;
-            }
-
-            // Make sure the OccupyingComponent is good.
-            if (!this.occupyingComponent)
-            {
-                this.occupyingComponent = this.GetComponent<OccupyingComponent>();
-                this.occupyingComponent.FindRenderers();
-            }
-
-            // Setup our new materials and figure out which to use.
-            Material mat;
-
-            if (this.imageData.Length != 0)
-            {
-                // Create a new material from our data.
-                mat = CustomBlocks.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
-                // If the creation fails, return false to signify.
-                if (!mat)
+                if (this.imageData == null)
                 {
                     return false;
                 }
-            }
-            else
-            {
-                // If we are here, use the default flag material.
-                mat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
-            }
 
-            // Setup the automatic resolution version and determine which to
-            // use.
-            this.fullResolutionMat = mat;
-            this.autoResolutionMat = mat.CreateMipMapEnabled();
-            if (CustomBlocks.UseMipMaps)
-            {
-                mat = this.autoResolutionMat;
-            }
+                // Make sure the OccupyingComponent is good.
+                if (!this.occupyingComponent)
+                {
+                    this.occupyingComponent = this.GetComponent<OccupyingComponent>();
+                    this.occupyingComponent.FindRenderers();
+                }
 
-            // Replace the material(s).
-            foreach(int i in this.RendererIndicies)
-            {
-                this.occupyingComponent.renderers[i].material = mat;
-            }
+                // Setup our new materials and figure out which to use.
+                Material mat;
 
-            this.rendererPatched = true;
-            if (this.sendUpdates)
-            {
-                this.GetComponent<CustomBlock_Network>()?.BroadcastChange(this.imageData);
+                if (this.imageData.Length != 0)
+                {
+                    // Create a new material from our data.
+                    mat = CustomBlocks.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
+                    // If the creation fails, return false to signify.
+                    if (!mat)
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    // If we are here, use the default flag material.
+                    mat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+                }
+
+                // Setup the automatic resolution version and determine which to
+                // use.
+                this.fullResolutionMat = mat;
+                this.autoResolutionMat = mat.CreateMipMapEnabled();
+                if (CustomBlocks.UseMipMaps)
+                {
+                    mat = this.autoResolutionMat;
+                }
+
+                // Replace the material(s).
+                foreach(int i in this.RendererIndicies)
+                {
+                    this.occupyingComponent.renderers[i].material = mat;
+                }
+
+                this.rendererPatched = true;
+                if (this.sendUpdates)
+                {
+                    this.GetComponent<CustomBlock_Network>()?.BroadcastChange(this.imageData);
+                }
+                return true;
             }
-            return true;
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+                throw e;
+            }
         }
 
         public override RGD Serialize_Save()
