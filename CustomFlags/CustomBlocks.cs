@@ -323,7 +323,7 @@ namespace DestinyCustomBlocks
 
             CustomBlocks.Log("Mod has been loaded.");
 
-            notification.Close();
+            notification?.Close();
         }
 
         public void OnModUnload()

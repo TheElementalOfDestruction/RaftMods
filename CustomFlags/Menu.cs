@@ -99,8 +99,11 @@ namespace DestinyCustomBlocks
 
         public IEnumerator LoadPreview()
         {
+            if (!this.currentBlock)
+            {
+                yield break;
+            }
             byte[] temp = null;
-
             string path = this.inputField.text;
 
             if (path.ToLower().StartsWith("http://") || path.ToLower().StartsWith("https://"))
