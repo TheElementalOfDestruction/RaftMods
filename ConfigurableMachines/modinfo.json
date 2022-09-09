@@ -9,6 +9,7 @@
     "gameVersion": "1.0",
     "updateUrl": "https://www.raftmodding.com/api/v1/mods/configmachines/version.txt",
     "isModPermanent": false,
+    "requiredByAllPlayers": true,
     "excludedFiles": [],
     "modSettings": [
         {
