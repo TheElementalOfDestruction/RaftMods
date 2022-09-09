@@ -721,23 +721,27 @@ namespace DestinyCustomBlocks
     public class Block_CustomPoster : Block_CustomBlock_Base
     {
         protected bool blockTypeSet = false;
-        protected CustomBlocks.BlockType bt = CustomBlocks.BlockType.NONE;
+
+        private CustomBlocks.BlockType bt = CustomBlocks.BlockType.NONE;
 
         public override CustomBlocks.BlockType CustomBlockType
         {
             get
             {
-                return this.bt;
+                if (this.bt == CustomBlocks.BlockType.NONE)
+                {
+                    this.bt = CustomBlocks.ID_TO_BLOCKTYPE[this.buildableItem.UniqueIndex];
+                }
+                return bt;
             }
         }
 
-        public void SetCustomBlockType(CustomBlocks.BlockType value)
+        protected override void Start()
         {
-            if (!this.blockTypeSet)
-            {
-                this.bt = value;
-                this.blockTypeSet = true;
-            }
+            base.Start();
+
+            Array.ForEach(this.GetComponentsInChildren<RaycastInteractable>(),
+                          x => x.AddRaycastables(new IRaycastable[] { this }));
         }
     }
 

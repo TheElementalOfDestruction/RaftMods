@@ -76,6 +76,7 @@ namespace DestinyCustomBlocks
         public static readonly Dictionary<BlockType, (int, int)> SIZES = new Dictionary<BlockType, (int, int)>()
         {
             { BlockType.NONE, (0, 0) },
+            { BlockType.ICON, (512, 512) },
             { BlockType.BED, (959, 682) },
             { BlockType.CURTAIN_H, (612, 706) },
             { BlockType.CURTAIN_V, (525, 496) },
@@ -121,7 +122,7 @@ namespace DestinyCustomBlocks
         {
             { BlockType.POSTER_H_16_9, new PosterData("POSTER_H_16_9", 1920, 1080, 2f) },
             { BlockType.POSTER_V_9_16, new PosterData("POSTER_V_9_16", 1080, 1920, 1.125f) },
-            { BlockType.POSTER_H_4_3, new PosterData("POSTER_H_4_3", 1440, 1080, 1.1875f) },
+            { BlockType.POSTER_H_4_3, new PosterData("POSTER_H_4_3", 1440, 1080, 1.5f) },
             { BlockType.POSTER_V_3_4, new PosterData("POSTER_V_3_4", 1080, 1440, 1.125f) },
         };
         public static readonly Dictionary<BlockType, string[]> POSTER_STRINGS = new Dictionary<BlockType, string[]>()
@@ -133,7 +134,8 @@ namespace DestinyCustomBlocks
                     "Custom Poster (16:9)",
                     "CustomPosters",
                     "Custom Posters",
-                    "A customizable poster."
+                    "A customizable poster.",
+                    "poster_h_16_9_icon.png"
                 }
             },
             {
@@ -143,7 +145,8 @@ namespace DestinyCustomBlocks
                     "Custom Poster (9:16)",
                     "CustomPosters",
                     "Custom Posters",
-                    "A customizable poster."
+                    "A customizable poster.",
+                    "poster_v_9_16_icon.png"
                 }
             },
             {
@@ -153,7 +156,8 @@ namespace DestinyCustomBlocks
                     "Custom Poster (4:3)",
                     "CustomPosters",
                     "Custom Posters",
-                    "A customizable poster."
+                    "A customizable poster.",
+                    "poster_h_4_3_icon.png"
                 }
             },
             {
@@ -163,10 +167,13 @@ namespace DestinyCustomBlocks
                     "Custom Poster (3:4)",
                     "CustomPosters",
                     "Custom Posters",
-                    "A customizable poster."
+                    "A customizable poster.",
+                    "poster_v_3_4_icon.png"
                 }
             },
         };
+
+        public static Dictionary<int, BlockType> ID_TO_BLOCKTYPE = new Dictionary<int, BlockType>();
 
         public static CustomBlocks instance;
         public static JsonModInfo modInfo;
@@ -243,6 +250,11 @@ namespace DestinyCustomBlocks
             this.defaultSprites = new Dictionary<BlockType, Sprite>();
             HNotification notification = HNotify.instance.AddNotification(HNotify.NotificationType.spinning, "Loading CustomBlocks...");
 
+            foreach (BlockType bt in IDS.Keys)
+            {
+                ID_TO_BLOCKTYPE[IDS[bt].Item2] = bt;
+            }
+
             try
             {
                 CustomBlocks.modInfo = modlistEntry.jsonmodinfo;
@@ -280,8 +292,6 @@ namespace DestinyCustomBlocks
 
                 // Register the items.
                 Array.ForEach(this.customItems.ToArray(), x => RAPI.RegisterItem(x));
-
-                Debug.Log($"Created {this.defaultMaterials.Count} default materials.");
             }
             catch (Exception e)
             {
@@ -382,7 +392,7 @@ namespace DestinyCustomBlocks
                 this.AddBaseTextures(bt, pd.CreateMaterial(), $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
                 this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
                 this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
-                this.customItems.Add(this.CreateGenericCustomPoster<Block_CustomPoster, CustomBlock_Network>(IDS[bt].Item1, IDS[bt].Item2, POSTER_STRINGS[bt], pd, recipe, CraftingCategory.Decorations, bt)); // Make sure to give correct block type.
+                this.customItems.Add(this.CreateGenericCustomPoster<Block_CustomPoster, CustomBlock_Network>(IDS[bt].Item1, IDS[bt].Item2, POSTER_STRINGS[bt], pd, recipe, CraftingCategory.Decorations)); // Make sure to give correct block type.
             }
         }
 
@@ -706,7 +716,7 @@ namespace DestinyCustomBlocks
             return customBlock;
         }
 
-        private Item_Base CreateGenericCustomPoster<BlockClass, NetworkClass>(int originalID, int newID, string[] data, PosterData pd, CostMultiple[] recipe, CraftingCategory craftCat, BlockType bt) where BlockClass : Block_CustomPoster where NetworkClass : MonoBehaviour_Network
+        private Item_Base CreateGenericCustomPoster<BlockClass, NetworkClass>(int originalID, int newID, string[] data, PosterData pd, CostMultiple[] recipe, CraftingCategory craftCat) where BlockClass : Block_CustomPoster where NetworkClass : MonoBehaviour_Network
         {
             // Create a clone of the regular flag.
             Item_Base originalItem = ItemManager.GetItemByIndex(originalID);
@@ -735,6 +745,11 @@ namespace DestinyCustomBlocks
             // Set the display stuff.
             customBlock.settings_Inventory.DisplayName = data[1];
             customBlock.settings_Inventory.Description = data[4];
+
+            // Set the icon.
+            Texture2D iconTex = new Texture2D(512, 512, TextureFormat.RGBA32, false);
+            ImageConversion.LoadImage(iconTex, GetEmbeddedFileBytes($"general_assets/{data[5]}"));
+            customBlock.settings_Inventory.Sprite = Sprite.Create(iconTex, new Rect(0, 0, 512, 512), new Vector2(0.5f, 0.5f));
 
             // Localization stuff.
             customBlock.settings_Inventory.LocalizationTerm = $"Item/{data[0]}";
@@ -765,17 +780,13 @@ namespace DestinyCustomBlocks
                     blockPrefab.ReplaceValues(originalItem, customBlock);
                     blocks[i] = cb;
                     DestroyImmediate(blockPrefab);
+                    DestroyImmediate(cb.GetComponentsInChildren<Component>(true).First(x => x.gameObject.name.Contains("painting")).gameObject);
 
-                    cb.SetCustomBlockType(bt);
+                    cb.transform.localScale = Vector3.one;
 
-                    cb.gameObject.AddComponent<RaycastInteractable>();
-                    var c = cb.gameObject.AddComponent<BoxCollider>();
-                    pd.AdjustBoxCollider(cb);
-
-                    c.isTrigger = true;
-                    c.enabled = false;
-                    c.gameObject.layer = 10;
-                    cb.onoffColliders = cb.onoffColliders.Extend(c);
+                    var c = cb.GetComponentInChildren<BoxCollider>();
+                    pd.AdjustBoxCollider(c);
+                    var raycast = c.gameObject.AddComponent<RaycastInteractable>();
 
                     var nb = cb.gameObject.AddComponent<NetworkClass>();
                     cb.networkedBehaviour = nb;
@@ -1216,7 +1227,7 @@ namespace DestinyCustomBlocks
                 var a = FindObjectOfType<Block_CustomRugSmall>();
                 var b = a.GetComponentInChildren<MeshFilter>();
                 b.mesh = mesh;
-                pd.AdjustBoxCollider(a);
+                pd.AdjustBoxCollider(a.GetComponent<BoxCollider>());
             }
             catch (Exception e)
             {
@@ -1238,7 +1249,9 @@ namespace DestinyCustomBlocks
             POSTER_H_4_3,
             POSTER_V_3_4,
             // Special value used for the edit function to not mirror.
-            NONE
+            NONE,
+            // Special value used for the icons.
+            ICON,
         }
 
         // Class for storing data about a split image.
@@ -1329,17 +1342,22 @@ namespace DestinyCustomBlocks
                     new Vector2(uvRight, uvBottom)
                 };
 
+                /*
                 this.meshTop = this.meshHeight / 2;
                 this.meshBottom = -1 * this.meshTop;
                 this.meshRight = this.meshWidth / 2;
                 this.meshLeft = -1 * this.meshRight;
+                */
+                this.meshTop = this.meshHeight;
+                this.meshBottom = 0;
+                this.meshRight = this.meshWidth / 2;
+                this.meshLeft = -1 * this.meshRight;
             }
 
-            public void AdjustBoxCollider(Block block)
+            public void AdjustBoxCollider(BoxCollider collider)
             {
-                var collider = block.GetComponent<BoxCollider>();
-                collider.size = new Vector3(this.meshWidth, this.meshHeight, 0.01f);
-                collider.center = new Vector3(0, 0, 0.01f);
+                collider.size = new Vector3(0.01f, this.meshHeight, this.meshWidth);
+                collider.center = new Vector3(0, 0, 0);
             }
 
             public Mesh CreateMesh()
