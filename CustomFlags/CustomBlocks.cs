@@ -38,6 +38,8 @@ namespace DestinyCustomBlocks
             { BlockType.POSTER_V_9_16, (352, 25932) },
             { BlockType.POSTER_H_4_3, (352, 25933) },
             { BlockType.POSTER_V_3_4, (352, 25934) },
+            { BlockType.POSTER_H_3_2, (352, 25935) },
+            { BlockType.POSTER_V_2_3, (352, 25936) },
         };
         private static readonly Dictionary<BlockType, string> FOLDER_NAMES = new Dictionary<BlockType, string>()
         {
@@ -56,7 +58,7 @@ namespace DestinyCustomBlocks
         };
 
         public static readonly int CUSTOM_BLOCK_ID_MIN = 25924;
-        public static readonly int CUSTOM_BLOCK_ID_MAX = 25934;
+        public static readonly int CUSTOM_BLOCK_ID_MAX = 25936;
 
         public static readonly Dictionary<BlockType, (int, int)> LOCATIONS = new Dictionary<BlockType, (int, int)>()
         {
@@ -72,6 +74,8 @@ namespace DestinyCustomBlocks
             { BlockType.POSTER_V_9_16, (-2, -2) },
             { BlockType.POSTER_H_4_3, (-2, -2) },
             { BlockType.POSTER_V_3_4, (-2, -2) },
+            { BlockType.POSTER_H_3_2, (-2, -2) },
+            { BlockType.POSTER_V_2_3, (-2, -2) },
         };
         public static readonly Dictionary<BlockType, (int, int)> SIZES = new Dictionary<BlockType, (int, int)>()
         {
@@ -88,6 +92,8 @@ namespace DestinyCustomBlocks
             { BlockType.POSTER_V_9_16, (1080, 1920) },
             { BlockType.POSTER_H_4_3, (1440, 1080) },
             { BlockType.POSTER_V_3_4, (1080, 1440) },
+            { BlockType.POSTER_H_3_2, (1620, 1080) },
+            { BlockType.POSTER_V_2_3, (1080, 1620) },
         };
         // Dictionary to tell what axis to mirror images on. Result is a tuple
         // of whether to mirror the x and whether to mirror the y.
@@ -105,6 +111,8 @@ namespace DestinyCustomBlocks
             { BlockType.POSTER_V_9_16, (false, false) },
             { BlockType.POSTER_H_4_3, (false, false) },
             { BlockType.POSTER_V_3_4, (false, false) },
+            { BlockType.POSTER_H_3_2, (false, false) },
+            { BlockType.POSTER_V_2_3, (false, false) },
         };
 
         public static readonly Dictionary<BlockType, SplitImageData[]> SPLIT_IMAGES = new Dictionary<BlockType, SplitImageData[]>()
@@ -1248,6 +1256,8 @@ namespace DestinyCustomBlocks
             POSTER_V_9_16,
             POSTER_H_4_3,
             POSTER_V_3_4,
+            POSTER_H_3_2,
+            POSTER_V_2_3,
             // Special value used for the edit function to not mirror.
             NONE,
             // Special value used for the icons.

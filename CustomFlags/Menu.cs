@@ -114,6 +114,10 @@ namespace DestinyCustomBlocks
                 www.downloadHandler = handler;
 
                 yield return www.SendWebRequest();
+                if (this.currentBlock == null)
+                {
+                    yield break;
+                }
 
                 if (www.responseCode > 500)
                 {
