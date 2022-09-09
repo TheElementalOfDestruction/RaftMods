@@ -99,10 +99,11 @@ namespace DestinyCustomBlocks
 
         public IEnumerator LoadPreview()
         {
-            if (!this.currentBlock)
+            if (this.currentBlock == null)
             {
                 yield break;
             }
+
             byte[] temp = null;
             string path = this.inputField.text;
 
