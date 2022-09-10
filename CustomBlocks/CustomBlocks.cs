@@ -147,14 +147,14 @@ namespace DestinyCustomBlocks
         {
             { BlockType.POSTER_H_16_9, new PosterData("16:9", 1920, 1080, 2f, -0.036f) },
             { BlockType.POSTER_V_9_16, new PosterData("9:16", 1080, 1920, 1.125f, 0.4f) },
-            { BlockType.POSTER_H_5_3, new PosterData("5:3", 1800, 1080, 1.5f, -0.036f) },
-            { BlockType.POSTER_V_3_5, new PosterData("3:5", 1080, 1800, 1.125f, 0f) },
+            { BlockType.POSTER_H_5_3, new PosterData("5:3", 1800, 1080, 1.5f, -0.15f) },
+            { BlockType.POSTER_V_3_5, new PosterData("3:5", 1080, 1800, 1.125f, 0.34f) },
             { BlockType.POSTER_H_4_3, new PosterData("4:3", 1440, 1080, 1.5f, -0.036f) },
             { BlockType.POSTER_V_3_4, new PosterData("3:4", 1080, 1440, 1.125f, 0.15f) },
             { BlockType.POSTER_H_3_2, new PosterData("3:2", 1620, 1080, 1.6875f, -0.036f) },
             { BlockType.POSTER_V_2_3, new PosterData("2:3", 1080, 1620, 1.125f, 0.245f) },
-            { BlockType.POSTER_H_2_1, new PosterData("2:1", 2160, 1080, 2.25f, 0f) },
-            { BlockType.POSTER_V_1_2, new PosterData("1:2", 1080, 2160, 1.125f, -0.036f) },
+            { BlockType.POSTER_H_2_1, new PosterData("2:1", 2160, 1080, 2.25f, -0.036f) },
+            { BlockType.POSTER_V_1_2, new PosterData("1:2", 1080, 2160, 1.125f, 0.525f) },
             { BlockType.POSTER_1_1, new PosterData("1:1", 1080, 1080, 1.125f, -0.036f) },
         };
         public static readonly Dictionary<BlockType, string[]> POSTER_STRINGS = new Dictionary<BlockType, string[]>()
@@ -164,8 +164,6 @@ namespace DestinyCustomBlocks
                 {
                     "destiny_CustomPoster_h_16_9",
                     "Custom Poster (16:9)",
-                    "CustomPosters",
-                    "Custom Posters",
                     "A customizable poster.",
                 }
             },
@@ -174,8 +172,22 @@ namespace DestinyCustomBlocks
                 {
                     "destiny_CustomPoster_v_9_16",
                     "Custom Poster (9:16)",
-                    "CustomPosters",
-                    "Custom Posters",
+                    "A customizable poster.",
+                }
+            },
+            {
+                BlockType.POSTER_H_5_3, new string[]
+                {
+                    "destiny_CustomPoster_v_5_3",
+                    "Custom Poster (5:3)",
+                    "A customizable poster.",
+                }
+            },
+            {
+                BlockType.POSTER_V_3_5, new string[]
+                {
+                    "destiny_CustomPoster_v_3_5",
+                    "Custom Poster (3:5)",
                     "A customizable poster.",
                 }
             },
@@ -184,8 +196,6 @@ namespace DestinyCustomBlocks
                 {
                     "destiny_CustomPoster_h_4_3",
                     "Custom Poster (4:3)",
-                    "CustomPosters",
-                    "Custom Posters",
                     "A customizable poster.",
                 }
             },
@@ -194,8 +204,6 @@ namespace DestinyCustomBlocks
                 {
                     "destiny_CustomPoster_v_3_4",
                     "Custom Poster (3:4)",
-                    "CustomPosters",
-                    "Custom Posters",
                     "A customizable poster.",
                 }
             },
@@ -204,8 +212,6 @@ namespace DestinyCustomBlocks
                 {
                     "destiny_CustomPoster_h_3_2",
                     "Custom Poster (3:2)",
-                    "CustomPosters",
-                    "Custom Posters",
                     "A customizable poster.",
                 }
             },
@@ -214,8 +220,30 @@ namespace DestinyCustomBlocks
                 {
                     "destiny_CustomPoster_v_2_3",
                     "Custom Poster (2:3)",
-                    "CustomPosters",
-                    "Custom Posters",
+                    "A customizable poster.",
+                }
+            },
+            {
+                BlockType.POSTER_H_2_1, new string[]
+                {
+                    "destiny_CustomPoster_h_2_1",
+                    "Custom Poster (2:1)",
+                    "A customizable poster.",
+                }
+            },
+            {
+                BlockType.POSTER_V_1_2, new string[]
+                {
+                    "destiny_CustomPoster_v_1_2",
+                    "Custom Poster (1:2)",
+                    "A customizable poster.",
+                }
+            },
+            {
+                BlockType.POSTER_1_1, new string[]
+                {
+                    "destiny_CustomPoster_v_1_1",
+                    "Custom Poster (Square)",
                     "A customizable poster.",
                 }
             },
@@ -504,7 +532,7 @@ namespace DestinyCustomBlocks
                 this.AddBaseTextures(bt, pd.CreateMaterial(), $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
                 this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
                 this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
-                Item_Base poster = this.CreateGenericCustomPoster<Block_CustomPoster, CustomBlock_Network>(IDS[bt].Item1, IDS[bt].Item2, POSTER_STRINGS[bt], pd, recipe, CraftingCategory.Decorations);
+                Item_Base poster = this.CreateGenericCustomPoster<Block_CustomPoster, CustomBlock_Network>(IDS[bt].Item1, IDS[bt].Item2, POSTER_STRINGS[bt], pd, recipe, CraftingCategory.Skin);
                 this.customItems.Add(poster);
                 if (!this.posterBase)
                 {
@@ -514,7 +542,9 @@ namespace DestinyCustomBlocks
                 poster.settings_recipe.baseSkinItem = this.posterBase;
             }
 
-            Traverse.Create(this.posterBase).Field("skins").SetValue(posters.ToArray());
+            Traverse trav = Traverse.Create(this.posterBase.settings_recipe);
+            trav.Field("skins").SetValue(posters.ToArray());
+            trav.Field("craftingCategory").SetValue(CraftingCategory.Decorations);
         }
 
         /*
@@ -857,7 +887,7 @@ namespace DestinyCustomBlocks
             Traverse.Create(customBlock.settings_buildable).Field("primaryPaintAxis").SetValue(Axis.None);
 
             // Setup the recipe.
-            customBlock.SetRecipe(recipe, craftCat, 1, false, data[2], 1);
+            customBlock.SetRecipe(recipe, craftCat, 1, false, null, 1);
             var trav = Traverse.Create(customBlock.settings_recipe);
             trav.Field("_hiddenInResearchTable").SetValue(false);
             trav.Field("skins").SetValue(new Item_Base[0]);
@@ -865,7 +895,7 @@ namespace DestinyCustomBlocks
 
             // Set the display stuff.
             customBlock.settings_Inventory.DisplayName = data[1];
-            customBlock.settings_Inventory.Description = data[4];
+            customBlock.settings_Inventory.Description = data[2];
 
             // Set the icon.
             customBlock.settings_Inventory.Sprite = pd.CreateIcon();
@@ -876,8 +906,7 @@ namespace DestinyCustomBlocks
             {
                 mDictionary = new Dictionary<string, TermData>
                 {
-                    [$"Item/{data[0]}"] = new TermData() { Languages = new[] { $"{data[1]}@{data[4]}" } },
-                    [$"CraftingSub/{data[2]}"] = new TermData() { Languages = new[] { data[3] } }
+                    [$"Item/{data[0]}"] = new TermData() { Languages = new[] { $"{data[1]}@{data[2]}" } },
                 },
                 mLanguages = new List<LanguageData> { new LanguageData() { Code = "en", Name = "English" } }
             };
