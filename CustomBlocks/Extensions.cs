@@ -84,8 +84,6 @@ namespace DestinyCustomBlocks
             cam.targetTexture = null;
 
             RenderTexture.ReleaseTemporary(temp);
-
-            System.IO.File.WriteAllBytes($"E:/{text.Replace(':', '-')}.png", source.EncodeToPNG());
         }
 
         // How is Aidan so amazing?
