@@ -1566,7 +1566,7 @@ namespace DestinyCustomBlocks
 
             Camera cam = CustomBlocks.renderSystem.GetComponentInChildren<Camera>(true);
             cam.targetTexture = temp;
-            var
+            CustomBlocks.renderSystem.GetComponentInChildren<UI.Text>();
 
 
             var prev = RenderTexture.active;
