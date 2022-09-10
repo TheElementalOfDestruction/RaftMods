@@ -17,12 +17,6 @@ namespace DestinyCustomBlocks
 {
     public class CustomBlocks : Mod
     {
-        /*
-        TODO: Currently the mod has a few missing features/problems.
-            * Already raycastable objects interfere with the menu prompt.
-            * Allow for turning on and off mipmaps.
-        */
-
         // Original id and new id.
         private static readonly Dictionary<BlockType, (int, int)> IDS = new Dictionary<BlockType, (int, int)>()
         {
@@ -51,10 +45,12 @@ namespace DestinyCustomBlocks
             { BlockType.CURTAIN_V, "curtain_v" },
             { BlockType.RUG_BIG, "rug_big" },
             { BlockType.RUG_SMALL, "rug_small" },
-            { BlockType.POSTER_H_16_9, "poster_h_16_9" },
-            { BlockType.POSTER_V_9_16, "poster_v_9_16" },
-            { BlockType.POSTER_H_4_3, "poster_h_4_3" },
-            { BlockType.POSTER_V_3_4, "poster_v_3_4" },
+            { BlockType.POSTER_H_16_9, "poster_h" },
+            { BlockType.POSTER_V_9_16, "poster_v" },
+            { BlockType.POSTER_H_4_3, "poster_h" },
+            { BlockType.POSTER_V_3_4, "poster_v" },
+            { BlockType.POSTER_H_3_2, "poster_h" },
+            { BlockType.POSTER_V_2_3, "poster_v" },
         };
 
         public static readonly int CUSTOM_BLOCK_ID_MIN = 25924;
@@ -204,9 +200,12 @@ namespace DestinyCustomBlocks
         public static CustomBlocks instance;
         public static JsonModInfo modInfo;
         public static Shader shader;
+        public static Camera iconRenderer;
 
         private static GameObject menu;
         private static GameObject menuAsset;
+        private static GameObject camera;
+        private static GameObject cameraAsset;
         private static CustomBlocksMenu cfMenu;
 
         // Dictionaries for storing the data for new materials.
@@ -324,11 +323,11 @@ namespace DestinyCustomBlocks
             }
 
             // Now, load the menu from the asset bundle.
-            var bundleLoadRequest = AssetBundle.LoadFromMemoryAsync(GetEmbeddedFileBytes("general_assets/customflags.assets"));
+            var bundleLoadRequest = AssetBundle.LoadFromMemoryAsync(GetEmbeddedFileBytes("general_assets/customblocks.assets"));
             yield return bundleLoadRequest;
             this.bundle = bundleLoadRequest.assetBundle;
 
-            var request = this.bundle.LoadAssetAsync<GameObject>("CustomFlagsMenu");
+            var request = this.bundle.LoadAssetAsync<GameObject>("CustomBlocksMenu");
             yield return request;
 
             try
@@ -336,6 +335,22 @@ namespace DestinyCustomBlocks
                 CustomBlocks.menuAsset = request.asset as GameObject;
                 CustomBlocks.menu = Instantiate(CustomBlocks.menuAsset, this.transform);
                 CustomBlocks.cfMenu = CustomBlocks.menu.AddComponent<CustomBlocksMenu>();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+                notification.Close();
+                yield break;
+            }
+
+            var request = this.bundle.LoadAssetAsync<GameObject>("IconRenderer");
+            yield return request;
+
+            try
+            {
+                CustomBlocks.cameraAsset = request.asset as Camera;
+                CustomBlocks.camera = Instantiate(CustomBlocks.menuAsset, this.transform);
+                CustomBlocks.iconRenderer = CustomBlocks.camera.GetComponentInChildren<>
             }
             catch (Exception e)
             {
@@ -1311,19 +1326,21 @@ namespace DestinyCustomBlocks
             public float meshLeft;
             public Vector2[] uvs;
             public int textureSize;
-            public string name;
+            public string ratio;
+            public bool horizontal;
 
-            public PosterData(string name, int widthPixels, int heightPixels, float widthBlock)
+            public PosterData(string ratio, int widthPixels, int heightPixels, float widthBlock)
             {
                 this.widthPixels = widthPixels;
                 this.heightPixels = heightPixels;
                 this.widthBlock = widthBlock;
-                this.name = name;
+                this.ratio = ratio;
 
                 // Calculations.
                 this.meshWidth = widthBlock;
                 this.meshHeight =  heightPixels * (widthBlock / (widthPixels));
-                int biggestSizePixels = widthPixels > heightPixels ? widthPixels : heightPixels;
+                this.horizontal = widthPixels >= heightPixels;
+                int biggestSizePixels = this.horizontal ? widthPixels : heightPixels;
 
                 if (biggestSizePixels > 4000)
                 {
@@ -1348,13 +1365,13 @@ namespace DestinyCustomBlocks
                     this.textureSize = 4096;
                 }
 
-
                 float uvTop = (heightPixels - 1) / (float)(this.textureSize - 1);
                 float uvBottom = 0;
                 float uvLeft = 0;
                 float uvRight = (widthPixels - 1) / (float)(this.textureSize - 1);
 
-                this.uvs = new Vector2[] {
+                this.uvs = new Vector2[]
+                {
                     new Vector2(uvLeft, uvTop),
                     new Vector2(uvRight, uvTop),
                     new Vector2(uvRight, uvBottom),
@@ -1419,10 +1436,12 @@ namespace DestinyCustomBlocks
             {
                 // Load the base texture.
                 Texture2D iconTex = new Texture2D(512, 512, TextureFormat.RGBA32, false);
-                ImageConversion.LoadImage(iconTex, GetEmbeddedFileBytes("general_assets/poster_icon_base.png"));
+                ImageConversion.LoadImage(iconTex, GetEmbeddedFileBytes($"general_assets/{this.horizontal ? "poster_icon_base_h.png" : "poster_icon_base_v.png"}"));
 
                 // Place the text in the icon.
-
+                Camera cam = CustomBlocks.iconRenderer;
+                cam.enabled = true;
+                cam.GetComponentInChildren<TMPro.Text>().text = this.ratio;
 
                 // Create and return the sprite.
                 return Sprite.Create(iconTex, new Rect(0, 0, 512, 512), new Vector2(0.5f, 0.5f));
@@ -1502,386 +1521,5 @@ namespace DestinyCustomBlocks
         FLIP, // Rotate 90 degrees clockwise.
         NONE, // No rotation.
         RIGHT, // Rotate 180 degrees.
-    }
-
-
-
-    static class ArrayExtension
-    {
-        public static T[] Extend<T>(this T[] arr, T newElement)
-        {
-            List<T> l = new List<T>(arr);
-            l.Add(newElement);
-            return l.ToArray();
-        }
-    }
-
-
-
-    static class MaterialExtension
-    {
-        public static readonly string[] ShaderPropNames = new String[]
-        {
-            "_Diffuse",
-            "_MetallicRPaintMaskGSmoothnessA",
-            "_Normal"
-        };
-
-        /*
-         * Takes a material without mip maps and creates one with mip maps.
-         */
-        public static Material CreateMipMapEnabled(this Material mat)
-        {
-            Material newMat = new Material(mat.shader);
-
-            // Iterate the list of known shader properties to copy.
-            foreach (string prop in ShaderPropNames)
-            {
-                // Get the original texture and create a new texture with mip
-                // maps enabled.
-                Texture2D originalTex = mat.GetTexture(prop) as Texture2D;
-                Texture2D newTex = new Texture2D(originalTex.width, originalTex.height, originalTex.format, true);
-
-                // Copy the image data.
-                newTex.SetPixels32(originalTex.GetPixels32());
-                newTex.Apply();
-
-                // Add it to the material.
-                newMat.SetTexture(prop, newTex);
-            }
-
-            return newMat;
-        }
-    }
-
-
-
-    static class Texture2DExtension
-    {
-        public static void AddText(this Texture2D source, string text)
-        {
-            var temp = RenderTexture.GetTemporary(source.width, source.height, 0);
-            Graphics.Blit(source, temp);
-            temp.filterMode = FilterMode.Point;
-
-            Camera cam = CustomBlocks.renderSystem.GetComponentInChildren<Camera>(true);
-            cam.targetTexture = temp;
-            CustomBlocks.renderSystem.GetComponentInChildren<UI.Text>();
-
-
-            var prev = RenderTexture.active;
-            RenderTexture.active = temp;
-            var area = copyArea ?? new Rect(0, 0, temp.width, temp.height);
-            area.y = temp.height - area.y - area.height;
-            source.ReadPixels(area, 0, 0);
-            source.Apply();
-            RenderTexture.active = prev;
-            RenderTexture.ReleaseTemporary(temp);
-        }
-
-        // How is Aidan so amazing?
-        public static Texture2D CreateReadable(this Texture2D source, Rect? copyArea = null, RenderTextureFormat format = RenderTextureFormat.Default, RenderTextureReadWrite readWrite = RenderTextureReadWrite.Default, TextureFormat? targetFormat = null, bool mipChain = false)
-        {
-            var temp = RenderTexture.GetTemporary(source.width, source.height, 0, format, readWrite);
-            Graphics.Blit(source, temp);
-            temp.filterMode = FilterMode.Point;
-            var prev = RenderTexture.active;
-            RenderTexture.active = temp;
-            var area = copyArea ?? new Rect(0, 0, temp.width, temp.height);
-            area.y = temp.height - area.y - area.height;
-            var texture = new Texture2D((int)area.width, (int)area.height, targetFormat ?? TextureFormat.RGBA32, mipChain);
-            texture.ReadPixels(area, 0, 0);
-            texture.Apply();
-            RenderTexture.active = prev;
-            RenderTexture.ReleaseTemporary(temp);
-            return texture;
-        }
-
-        // Aidan is a god.
-        public static void Edit(this Texture2D baseImg, Texture2D overlay, int xOffset, int yOffset, int targetX, int targetY, CustomBlocks.BlockType bt = CustomBlocks.BlockType.NONE, bool extend = false)
-        {
-            var w = targetX;
-            var h = targetY;
-            var mirrorX = CustomBlocks.MIRROR[bt].Item1 ? w - 1 : 0;
-            var mirrorY = CustomBlocks.MIRROR[bt].Item2 ? h - 1 : 0;
-            for (var x = 0; x < w; x++)
-            {
-                for (var y = 0; y < h; y++)
-                {
-                    baseImg.SetPixel(xOffset + x, yOffset + y, baseImg.GetPixel(x, y).Overlay(overlay.GetPixelBilinear(Math.Abs((float)(mirrorX - x) / w), Math.Abs((float)(mirrorY - y) / h))));
-                }
-            }
-
-            // This code only runs if we are extending the texture outwards.
-            if (extend)
-            {
-                // This code extends the final pixel border outwards to help
-                // with mip maps.
-                // `i < borderSize` is the format.
-                for (int i = 0; i < 3; ++i)
-                {
-                    // Do the 4 corners.
-                    baseImg.SetPixel(xOffset - (1 + i), yOffset - (1 + i), baseImg.GetPixel(xOffset, yOffset));
-                    baseImg.SetPixel(xOffset + targetX + i, yOffset - (1 + i), baseImg.GetPixel(xOffset + targetX - 1, yOffset));
-                    baseImg.SetPixel(xOffset - (1 + i), yOffset + targetY, baseImg.GetPixel(xOffset, yOffset + targetY - 1));
-                    baseImg.SetPixel(xOffset + targetX + i, yOffset + targetY + i, baseImg.GetPixel(xOffset + targetX - 1, yOffset + targetY - 1));
-
-                    for (int x = xOffset; x < xOffset + targetX; ++x)
-                    {
-                        baseImg.SetPixel(x, yOffset - (1 + i), baseImg.GetPixel(x, yOffset));
-                        baseImg.SetPixel(x, yOffset + targetY + i, baseImg.GetPixel(x, yOffset + targetY - 1));
-                    }
-
-                    for (int y = yOffset; y < yOffset + targetY; ++y)
-                    {
-                        baseImg.SetPixel(xOffset - (1 + i), y, baseImg.GetPixel(xOffset, y));
-                        baseImg.SetPixel(xOffset + targetX + i, y, baseImg.GetPixel(xOffset + targetX - 1, y));
-                    }
-                }
-            }
-
-            baseImg.Apply();
-        }
-
-        /*
-         * Returns a new Texture2D containing a portion of the original image.
-         */
-        public static Texture2D Cut(this Texture2D baseImg, int xOffset, int yOffset, int width, int height)
-        {
-            Texture2D tex = new Texture2D(width, height, baseImg.format, false);
-            for (int y = 0; y < height; ++y)
-            {
-                for (int x = 0; x < width; ++x)
-                {
-                    tex.SetPixel(x, y, baseImg.GetPixel(x + xOffset, y + yOffset));
-                }
-            }
-            tex.Apply();
-            return tex;
-        }
-
-        public static Texture2D Cut(this Texture2D baseImg, (int, int) xyOffset, (int, int) widthHeight)
-        {
-            return baseImg.Cut(xyOffset.Item1, xyOffset.Item2, widthHeight.Item1, widthHeight.Item2);
-        }
-
-        public static void Rotate(this Texture2D img, Rotation rot)
-        {
-            if (rot == Rotation.NONE)
-            {
-                // Don't change it.
-                return;
-            }
-            Color32[] source = img.GetPixels32();
-            Color32[] dest = new Color32[source.Length];
-            int height = img.height;
-            int width = img.width;
-            switch(rot)
-            {
-                case Rotation.LEFT:
-                    for (int y = 0; y < height; ++y)
-                    {
-                        for (int x = 0; x < width; ++x)
-                        {
-                            dest[(height - 1) - y + (x * height)] = source[x + (y * width)];
-                        }
-                    }
-                    img.Resize(img.height, img.width);
-                    break;
-                case Rotation.RIGHT:
-                    for (int y = 0; y < height; ++y)
-                    {
-                        for (int x = 0; x < width; ++x)
-                        {
-                            dest[y + ((width - 1 - x) * height)] = source[x + (y * width)];
-                        }
-                    }
-                    img.Resize(img.height, img.width);
-                    break;
-                case Rotation.FLIP:
-                    for (int y = 0; y < height; ++y)
-                    {
-                        for (int x = 0; x < width; ++x)
-                        {
-                            dest[((height - 1 - y) * width) + (width - 1 - x)] = source[x + (y * width)];
-                        }
-                    }
-                    break;
-            }
-            img.SetPixels32(dest);
-            img.Apply();
-        }
-
-        public static byte[] SanitizeImage(this byte[] arr, CustomBlocks.BlockType bt)
-        {
-            if (arr == null)
-            {
-                return new byte[0];
-            }
-            if (arr.Length == 0)
-            {
-                return arr;
-            }
-            // Load our plain data.
-            Texture2D texOriginal = new Texture2D(1, 1);
-            texOriginal.wrapMode = TextureWrapMode.Clamp;
-            if (!ImageConversion.LoadImage(texOriginal, arr))
-            {
-                return new byte[0];
-            }
-
-            (int, int) size = CustomBlocks.SIZES[bt];
-
-            // Resize the image before saving the color data.
-            Texture2D tex = new Texture2D(size.Item1, size.Item2);
-            tex.Edit(texOriginal, 0, 0, size.Item1, size.Item2);
-
-            Color32[] colors = tex.GetPixels32();
-            List<byte> bytes = new List<byte>();
-            foreach(var c in colors)
-            {
-                bytes.Add(c.r);
-                bytes.Add(c.g);
-                bytes.Add(c.b);
-                bytes.Add(c.a);
-            }
-
-            return bytes.ToArray();
-        }
-
-        public static Texture2D ToTexture2D(this byte[] arr, int width, int height)
-        {
-            if (arr == null)
-            {
-                CustomBlocks.DebugLog("Failed to convert byte array to Texture2D: array was null.");
-                return null;
-            }
-            if ((arr.Length & 3) != 0 || arr.Length != (width * height * 4))
-            {
-                CustomBlocks.DebugLog($"Failed to convert byte array to Texture2D: array was wrong length (expected {width * height * 4}, got {arr.Length}).");
-                return null;
-            }
-
-            List<Color32> colors = new List<Color32>();
-            Color32 currentColor = new Color32(0, 0, 0, 0);
-
-            for (int i = 0; i < arr.Length; ++i)
-            {
-                // Shortcut for i % 4;
-                switch (i & 3)
-                {
-                    case 0:
-                        if (i != 0)
-                        {
-                            colors.Add(currentColor);
-                            currentColor = new Color32(0, 0, 0, 0);
-                        }
-                        currentColor.r = arr[i];
-                        break;
-                    case 1:
-                        currentColor.g = arr[i];
-                        break;
-                    case 2:
-                        currentColor.b = arr[i];
-                        break;
-                    case 3:
-                        currentColor.a = arr[i];
-                        break;
-                }
-            }
-            colors.Add(currentColor);
-
-            var tex = new Texture2D(width, height);
-            tex.wrapMode = TextureWrapMode.Clamp;
-            tex.SetPixels32(colors.ToArray());
-            return tex;
-        }
-
-        public static Color Overlay(this Color a, Color b)
-        {
-            if (a.a <= 0)
-                return b;
-            if (b.a <= 0)
-                return a;
-            var r = b.a / (b.a + a.a * (1 - b.a));
-            float Ratio(float aV, float bV) => bV * r + aV * (1 - r);
-            return new Color(Ratio(a.r, b.r), Ratio(a.g, b.g), Ratio(a.b, b.b), b.a + a.a * (1 - b.a));
-        }
-    }
-
-
-
-    // Thank you Aidan for these methods.
-    static class ExtensionMethods
-    {
-        public static void CopyFieldsOf(this object value, object source)
-        {
-            var t1 = value.GetType();
-            var t2 = source.GetType();
-            while (!t1.IsAssignableFrom(t2))
-                t1 = t1.BaseType;
-            while (t1 != typeof(UnityEngine.Object) && t1 != typeof(object))
-            {
-                foreach (var f in t1.GetFields(~BindingFlags.Default))
-                    if (!f.IsStatic)
-                        f.SetValue(value, f.GetValue(source));
-                t1 = t1.BaseType;
-            }
-        }
-
-        public static void ReplaceValues(this Component value, object original, object replacement, int serializableLayers = 0)
-        {
-            foreach (var c in value.GetComponentsInChildren<Component>())
-                (c as object).ReplaceValues(original, replacement, serializableLayers);
-        }
-        public static void ReplaceValues(this GameObject value, object original, object replacement, int serializableLayers = 0)
-        {
-            foreach (var c in value.GetComponentsInChildren<Component>())
-                (c as object).ReplaceValues(original, replacement, serializableLayers);
-        }
-
-        public static void ReplaceValues(this object value, object original, object replacement, int serializableLayers = 0)
-        {
-            if (value == null)
-                return;
-            var t = value.GetType();
-            while (t != typeof(UnityEngine.Object) && t != typeof(object))
-            {
-                foreach (var f in t.GetFields(~BindingFlags.Default))
-                    if (!f.IsStatic)
-                    {
-                        if (f.GetValue(value) == original || (f.GetValue(value)?.Equals(original) ?? false))
-                            try
-                            {
-                                f.SetValue(value, replacement);
-                            } catch { }
-                        else if (f.GetValue(value) is IList)
-                        {
-                            var l = f.GetValue(value) as IList;
-                            for (int i = 0; i < l.Count; i++)
-                                if (l[i] == original || (l[i]?.Equals(original) ?? false))
-                                    try
-                                    {
-                                        l[i] = replacement;
-                                    } catch { }
-
-                        }
-                        else if (serializableLayers > 0 && (f.GetValue(value)?.GetType()?.IsSerializable ?? false))
-                            f.GetValue(value).ReplaceValues(original, replacement, serializableLayers - 1);
-                    }
-                t = t.BaseType;
-            }
-        }
-
-        public static void SetRecipe(this Item_Base item, CostMultiple[] cost, CraftingCategory category = CraftingCategory.Resources, int amountToCraft = 1, bool learnedFromBeginning = false, string subCategory = null, int subCatergoryOrder = 0)
-        {
-            Traverse recipe = Traverse.Create(item.settings_recipe);
-            recipe.Field("craftingCategory").SetValue(category);
-            recipe.Field("amountToCraft").SetValue(amountToCraft);
-            recipe.Field("learnedFromBeginning").SetValue(learnedFromBeginning);
-            recipe.Field("subCategory").SetValue(subCategory);
-            recipe.Field("subCatergoryOrder").SetValue(subCatergoryOrder);
-            item.settings_recipe.NewCost = cost;
-        }
     }
 }
