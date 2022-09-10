@@ -120,12 +120,12 @@ namespace DestinyCustomBlocks
 
         public static readonly Dictionary<BlockType, PosterData> POSTER_DATA = new Dictionary<BlockType, PosterData>()
         {
-            { BlockType.POSTER_H_16_9, new PosterData("POSTER_H_16_9", 1920, 1080, 2f) },
-            { BlockType.POSTER_V_9_16, new PosterData("POSTER_V_9_16", 1080, 1920, 1.125f) },
-            { BlockType.POSTER_H_4_3, new PosterData("POSTER_H_4_3", 1440, 1080, 1.5f) },
-            { BlockType.POSTER_V_3_4, new PosterData("POSTER_V_3_4", 1080, 1440, 1.125f) },
-            { BlockType.POSTER_H_3_2, new PosterData("POSTER_H_3_2", 1620, 1080, 1.6875f) },
-            { BlockType.POSTER_V_2_3, new PosterData("POSTER_V_2_3", 1080, 1620, 1.125f) },
+            { BlockType.POSTER_H_16_9, new PosterData("16:9", 1920, 1080, 2f, -0.036f) },
+            { BlockType.POSTER_V_9_16, new PosterData("9:16", 1080, 1920, 1.125f, 0.4f) },
+            { BlockType.POSTER_H_4_3, new PosterData("4:3", 1440, 1080, 1.5f, -0.036f) },
+            { BlockType.POSTER_V_3_4, new PosterData("3:4", 1080, 1440, 1.125f, 0.15f) },
+            { BlockType.POSTER_H_3_2, new PosterData("3:2", 1620, 1080, 1.6875f, -0.036f) },
+            { BlockType.POSTER_V_2_3, new PosterData("2:3", 1080, 1620, 1.125f, 0.245f) },
         };
         public static readonly Dictionary<BlockType, string[]> POSTER_STRINGS = new Dictionary<BlockType, string[]>()
         {
@@ -268,56 +268,6 @@ namespace DestinyCustomBlocks
             this.defaultSprites = new Dictionary<BlockType, Sprite>();
             HNotification notification = HNotify.instance.AddNotification(HNotify.NotificationType.spinning, "Loading CustomBlocks...");
 
-            foreach (BlockType bt in IDS.Keys)
-            {
-                ID_TO_BLOCKTYPE[IDS[bt].Item2] = bt;
-            }
-
-            try
-            {
-                CustomBlocks.modInfo = modlistEntry.jsonmodinfo;
-                this.harmony = new Harmony("com.destruction.CustomBlocks");
-                this.harmony.PatchAll(Assembly.GetExecutingAssembly());
-                this.prefabHolder = new GameObject("prefabHolder").transform;
-                this.prefabHolder.gameObject.SetActive(false);
-                DontDestroyOnLoad(this.prefabHolder.gameObject);
-
-                // First thing is first, let's fetch our shader from the game.
-                CustomBlocks.shader = Shader.Find(" BlockPaint");
-
-                // Second, setup most of the materials using the basic methods.
-                this.SetupBasicBlockData(BlockType.BED);
-                this.SetupBasicBlockData(BlockType.CURTAIN_V);
-                this.SetupBasicBlockData(BlockType.CURTAIN_H);
-                this.SetupBasicBlockData(BlockType.FLAG);
-                this.SetupBasicBlockData(BlockType.RUG_BIG);
-                this.SetupBasicBlockData(BlockType.RUG_SMALL);
-                this.SetupBasicBlockData(BlockType.SAIL);
-
-                // Create the custom block item bases.
-                this.customItems = new List<Item_Base>()
-                {
-                    this.CreateCustomBedItem(),
-                    this.CreateCustomCurtainHItem(),
-                    this.CreateCustomCurtainVItem(),
-                    this.CreateCustomFlagItem(),
-                    this.CreateCustomRugBigItem(),
-                    this.CreateCustomRugSmallItem(),
-                    this.CreateCustomSailItem(),
-                };
-
-                this.SetupPosters();
-
-                // Register the items.
-                Array.ForEach(this.customItems.ToArray(), x => RAPI.RegisterItem(x));
-            }
-            catch (Exception e)
-            {
-                Debug.LogError(e);
-                notification.Close();
-                yield break;
-            }
-
             // Now, load the menu from the asset bundle.
             var bundleLoadRequest = AssetBundle.LoadFromMemoryAsync(GetEmbeddedFileBytes("general_assets/customblocks.assets"));
             yield return bundleLoadRequest;
@@ -356,8 +306,93 @@ namespace DestinyCustomBlocks
                 yield break;
             }
 
-            CustomBlocks.Log("Mod has been loaded.");
+            yield return new WaitForEndOfFrame();
 
+            foreach (BlockType bt in IDS.Keys)
+            {
+                ID_TO_BLOCKTYPE[IDS[bt].Item2] = bt;
+            }
+
+            try
+            {
+                CustomBlocks.modInfo = modlistEntry.jsonmodinfo;
+                this.harmony = new Harmony("com.destruction.CustomBlocks");
+                this.harmony.PatchAll(Assembly.GetExecutingAssembly());
+                this.prefabHolder = new GameObject("prefabHolder").transform;
+                this.prefabHolder.gameObject.SetActive(false);
+                DontDestroyOnLoad(this.prefabHolder.gameObject);
+
+                // First thing is first, let's fetch our shader from the game.
+                CustomBlocks.shader = Shader.Find(" BlockPaint");
+
+                // Second, setup most of the materials using the basic methods.
+                this.SetupBasicBlockData(BlockType.BED);
+                this.SetupBasicBlockData(BlockType.CURTAIN_V);
+                this.SetupBasicBlockData(BlockType.CURTAIN_H);
+                this.SetupBasicBlockData(BlockType.FLAG);
+                this.SetupBasicBlockData(BlockType.RUG_BIG);
+                this.SetupBasicBlockData(BlockType.RUG_SMALL);
+                this.SetupBasicBlockData(BlockType.SAIL);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+                notification.Close();
+                yield break;
+            }
+
+            yield return new WaitForEndOfFrame();
+
+            try
+            {
+                // Create the custom block item bases.
+                this.customItems = new List<Item_Base>()
+                {
+                    this.CreateCustomBedItem(),
+                    this.CreateCustomCurtainHItem(),
+                    this.CreateCustomCurtainVItem(),
+                    this.CreateCustomFlagItem(),
+                    this.CreateCustomRugBigItem(),
+                    this.CreateCustomRugSmallItem(),
+                    this.CreateCustomSailItem(),
+                };
+
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+                notification.Close();
+                yield break;
+            }
+
+            yield return new WaitForEndOfFrame();
+
+            try
+            {
+                this.SetupPosters();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+                notification.Close();
+                yield break;
+            }
+
+            yield return new WaitForEndOfFrame();
+
+            try
+            {
+                // Register the items.
+                Array.ForEach(this.customItems.ToArray(), x => RAPI.RegisterItem(x));
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+                notification.Close();
+                yield break;
+            }
+
+            CustomBlocks.Log("Mod has been loaded.");
             notification?.Close();
         }
 
@@ -1253,25 +1288,6 @@ namespace DestinyCustomBlocks
             {
                 // Only do something for custom blocks.
                 block.GetComponent<ICustomBlock>()?.SwitchMipMapState(state);
-            }
-        }
-
-        [ConsoleCommand(name: "replaceMesh", docs: "")]
-        public static void Test()
-        {
-            try
-            {
-                PosterData pd = new PosterData("dasf", 300, 300, 0.5f);
-                Mesh mesh = pd.CreateMesh();
-
-                var a = FindObjectOfType<Block_CustomRugSmall>();
-                var b = a.GetComponentInChildren<MeshFilter>();
-                b.mesh = mesh;
-                pd.AdjustBoxCollider(a.GetComponent<BoxCollider>());
-            }
-            catch (Exception e)
-            {
-                Debug.LogError(e);
             }
         }
     }

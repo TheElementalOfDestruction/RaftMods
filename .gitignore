@@ -61,6 +61,6 @@ crashlytics-build.properties
 # Personal Build Steps.
 deploy.bat
 
+CustomBlocks/bin
 CustomBlocks/obj
 GlobalSuppressions.cs
-CustomBlocks/bin

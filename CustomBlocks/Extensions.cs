@@ -63,13 +63,15 @@ namespace DestinyCustomBlocks
         public static void AddText(this Texture2D source, string text)
         {
             var temp = RenderTexture.GetTemporary(source.width, source.height, 0);
-            Graphics.Blit(source, temp);
             temp.filterMode = FilterMode.Point;
 
             Camera cam = CustomBlocks.iconRenderer;
             cam.targetTexture = temp;
             cam.GetComponentInChildren<TMPro.TMP_Text>().text = text;
-
+            cam.GetComponentInChildren<MeshRenderer>(true).material.SetTexture("_MainTex", source);
+            cam.gameObject.SetActiveSafe(true);
+            cam.Render();
+            cam.gameObject.SetActiveSafe(false);
 
             var prev = RenderTexture.active;
             RenderTexture.active = temp;
@@ -78,7 +80,12 @@ namespace DestinyCustomBlocks
             source.ReadPixels(area, 0, 0);
             source.Apply();
             RenderTexture.active = prev;
+
+            cam.targetTexture = null;
+
             RenderTexture.ReleaseTemporary(temp);
+
+            System.IO.File.WriteAllBytes($"E:/{text.Replace(':', '-')}.png", source.EncodeToPNG());
         }
 
         // How is Aidan so amazing?

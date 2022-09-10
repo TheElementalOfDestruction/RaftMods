@@ -36,17 +36,22 @@ namespace DestinyCustomBlocks
         public float meshBottom;
         public float meshRight;
         public float meshLeft;
+        public float heightOffset;
         public Vector2[] uvs;
         public int textureSize;
         public string ratio;
         public bool horizontal;
 
-        public PosterData(string ratio, int widthPixels, int heightPixels, float widthBlock)
+        /*
+         * Height offset is for fixing the box collider being vertically.
+         */
+        public PosterData(string ratio, int widthPixels, int heightPixels, float widthBlock, float heightOffset)
         {
             this.widthPixels = widthPixels;
             this.heightPixels = heightPixels;
             this.widthBlock = widthBlock;
             this.ratio = ratio;
+            this.heightOffset = heightOffset;
 
             // Calculations.
             this.meshWidth = widthBlock;
@@ -94,12 +99,6 @@ namespace DestinyCustomBlocks
                 new Vector2(uvRight, uvBottom)
             };
 
-            /*
-            this.meshTop = this.meshHeight / 2;
-            this.meshBottom = -1 * this.meshTop;
-            this.meshRight = this.meshWidth / 2;
-            this.meshLeft = -1 * this.meshRight;
-            */
             this.meshTop = this.meshHeight;
             this.meshBottom = 0;
             this.meshRight = this.meshWidth / 2;
@@ -109,7 +108,7 @@ namespace DestinyCustomBlocks
         public void AdjustBoxCollider(BoxCollider collider)
         {
             collider.size = new Vector3(0.01f, this.meshHeight, this.meshWidth);
-            collider.center = new Vector3(0, 0, 0);
+            collider.center = new Vector3(0, this.heightOffset, 0);
         }
 
         public Mesh CreateMesh()
