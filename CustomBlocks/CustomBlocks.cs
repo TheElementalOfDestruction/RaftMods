@@ -1,15 +1,11 @@
 using HarmonyLib;
 using I2.Loc;
-using Steamworks;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
-using System.Text;
 using UnityEngine;
 
 
@@ -343,14 +339,15 @@ namespace DestinyCustomBlocks
                 yield break;
             }
 
-            var request = this.bundle.LoadAssetAsync<GameObject>("IconRenderer");
+            request = this.bundle.LoadAssetAsync<GameObject>("IconRenderer");
             yield return request;
 
             try
             {
-                CustomBlocks.cameraAsset = request.asset as Camera;
-                CustomBlocks.camera = Instantiate(CustomBlocks.menuAsset, this.transform);
-                CustomBlocks.iconRenderer = CustomBlocks.camera.GetComponentInChildren<>
+                CustomBlocks.cameraAsset = request.asset as GameObject;
+                CustomBlocks.camera = Instantiate(CustomBlocks.cameraAsset, this.transform);
+                CustomBlocks.camera.SetActiveSafe(false);
+                CustomBlocks.iconRenderer = CustomBlocks.camera.GetComponentInChildren<Camera>(true);
             }
             catch (Exception e)
             {
@@ -374,6 +371,14 @@ namespace DestinyCustomBlocks
                 Destroy(CustomBlocks.menu);
             }
             if (CustomBlocks.menuAsset)
+            {
+                Destroy(CustomBlocks.menuAsset);
+            }
+            if (CustomBlocks.camera)
+            {
+                Destroy(CustomBlocks.menu);
+            }
+            if (CustomBlocks.cameraAsset)
             {
                 Destroy(CustomBlocks.menuAsset);
             }
@@ -1164,7 +1169,6 @@ namespace DestinyCustomBlocks
          */
         private static void PlaceSplitImageInTexture(Texture2D dest, Texture2D src, BlockType bt)
         {
-            int i = 0;
             foreach (SplitImageData sid in SPLIT_IMAGES[bt])
             {
                 Texture2D slice = src.Cut(sid.srcXY, sid.widthHeight);
@@ -1270,256 +1274,5 @@ namespace DestinyCustomBlocks
                 Debug.LogError(e);
             }
         }
-
-        public enum BlockType
-        {
-            BED,
-            CURTAIN_H,
-            CURTAIN_V,
-            FLAG,
-            RUG_BIG,
-            RUG_SMALL,
-            SAIL,
-            POSTER_H_16_9,
-            POSTER_V_9_16,
-            POSTER_H_4_3,
-            POSTER_V_3_4,
-            POSTER_H_3_2,
-            POSTER_V_2_3,
-            // Special value used for the edit function to not mirror.
-            NONE,
-            // Special value used for the icons.
-            ICON,
-        }
-
-        // Class for storing data about a split image.
-        public struct SplitImageData
-        {
-            // The location in the source image of the bottom right pixel.
-            public ValueTuple<int, int> srcXY;
-            // The width and height of the split.
-            public ValueTuple<int, int> widthHeight;
-            // The location in the destination for the bottom right pixel.
-            public ValueTuple<int, int> destXY;
-            // The rotation to use when placing it in the destination.
-            public Rotation rotation;
-
-            public SplitImageData((int, int) srcXY, (int, int) widthHeight, (int, int) destXY, Rotation rotation)
-            {
-                this.srcXY = srcXY;
-                this.widthHeight = widthHeight;
-                this.destXY = destXY;
-                this.rotation = rotation;
-            }
-        }
-
-        public struct PosterData
-        {
-            public int widthPixels;
-            public int heightPixels;
-            public float widthBlock;
-            public float meshWidth;
-            public float meshHeight;
-            public float meshTop;
-            public float meshBottom;
-            public float meshRight;
-            public float meshLeft;
-            public Vector2[] uvs;
-            public int textureSize;
-            public string ratio;
-            public bool horizontal;
-
-            public PosterData(string ratio, int widthPixels, int heightPixels, float widthBlock)
-            {
-                this.widthPixels = widthPixels;
-                this.heightPixels = heightPixels;
-                this.widthBlock = widthBlock;
-                this.ratio = ratio;
-
-                // Calculations.
-                this.meshWidth = widthBlock;
-                this.meshHeight =  heightPixels * (widthBlock / (widthPixels));
-                this.horizontal = widthPixels >= heightPixels;
-                int biggestSizePixels = this.horizontal ? widthPixels : heightPixels;
-
-                if (biggestSizePixels > 4000)
-                {
-                    throw new Exception("Height or width was greater than 4000");
-                }
-
-                // Determine the width and height to use for the texture.
-                if (biggestSizePixels <= 512)
-                {
-                    this.textureSize = 512;
-                }
-                else if (biggestSizePixels <= 1024)
-                {
-                    this.textureSize = 1024;
-                }
-                else if (biggestSizePixels <= 2048)
-                {
-                    this.textureSize = 2048;
-                }
-                else
-                {
-                    this.textureSize = 4096;
-                }
-
-                float uvTop = (heightPixels - 1) / (float)(this.textureSize - 1);
-                float uvBottom = 0;
-                float uvLeft = 0;
-                float uvRight = (widthPixels - 1) / (float)(this.textureSize - 1);
-
-                this.uvs = new Vector2[]
-                {
-                    new Vector2(uvLeft, uvTop),
-                    new Vector2(uvRight, uvTop),
-                    new Vector2(uvRight, uvBottom),
-                    new Vector2(uvLeft, uvBottom),
-                    new Vector2(uvRight, uvTop),
-                    new Vector2(uvLeft, uvTop),
-                    new Vector2(uvLeft, uvBottom),
-                    new Vector2(uvRight, uvBottom)
-                };
-
-                /*
-                this.meshTop = this.meshHeight / 2;
-                this.meshBottom = -1 * this.meshTop;
-                this.meshRight = this.meshWidth / 2;
-                this.meshLeft = -1 * this.meshRight;
-                */
-                this.meshTop = this.meshHeight;
-                this.meshBottom = 0;
-                this.meshRight = this.meshWidth / 2;
-                this.meshLeft = -1 * this.meshRight;
-            }
-
-            public void AdjustBoxCollider(BoxCollider collider)
-            {
-                collider.size = new Vector3(0.01f, this.meshHeight, this.meshWidth);
-                collider.center = new Vector3(0, 0, 0);
-            }
-
-            public Mesh CreateMesh()
-            {
-                Mesh mesh = new Mesh();
-
-                mesh.vertices = new Vector3[]
-                {
-                    new Vector3(this.meshLeft, this.meshTop, 0),
-                    new Vector3(this.meshRight, this.meshTop, 0),
-                    new Vector3(this.meshRight, this.meshBottom, 0),
-                    new Vector3(this.meshLeft, this.meshBottom, 0),
-                    new Vector3(this.meshRight, this.meshTop, 0),
-                    new Vector3(this.meshLeft, this.meshTop, 0),
-                    new Vector3(this.meshLeft, this.meshBottom, 0),
-                    new Vector3(this.meshRight, this.meshBottom, 0),
-                };
-                mesh.triangles = new int[] { 0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7 };
-                mesh.uv = this.uvs;
-
-                return mesh;
-            }
-
-            public Material CreateMaterial()
-            {
-                Material ret = new Material(CustomBlocks.shader);
-                Texture2D temp = new Texture2D(this.textureSize, this.textureSize);
-                ret.SetTexture("_Diffuse", temp);
-                ret.SetTexture("_MetallicRPaintMaskGSmoothnessA", temp);
-                ret.SetTexture("_Normal", temp);
-
-                return ret;
-            }
-
-            public Sprite CreateIcon()
-            {
-                // Load the base texture.
-                Texture2D iconTex = new Texture2D(512, 512, TextureFormat.RGBA32, false);
-                ImageConversion.LoadImage(iconTex, GetEmbeddedFileBytes($"general_assets/{this.horizontal ? "poster_icon_base_h.png" : "poster_icon_base_v.png"}"));
-
-                // Place the text in the icon.
-                Camera cam = CustomBlocks.iconRenderer;
-                cam.enabled = true;
-                cam.GetComponentInChildren<TMPro.Text>().text = this.ratio;
-
-                // Create and return the sprite.
-                return Sprite.Create(iconTex, new Rect(0, 0, 512, 512), new Vector2(0.5f, 0.5f));
-            }
-        }
-    }
-
-
-
-    [HarmonyPatch(typeof(RGD_Block), "RestoreBlock")]
-    public class Patch_RestoreBlock
-    {
-        public static void Postfix(ref RGD_Block __instance, Block block)
-        {
-            // Make sure it is one of our blocks.
-            if (__instance.BlockIndex >= CustomBlocks.CUSTOM_BLOCK_ID_MIN && __instance.BlockIndex <= CustomBlocks.CUSTOM_BLOCK_ID_MAX)
-            {
-                RGD_Storage rgd = __instance as RGD_Storage;
-                if (rgd != null)
-                {
-                    ICustomBlock cb = block as ICustomBlock;
-                    if (cb != null)
-                    {
-                        if (Raft_Network.IsHost || !CustomBlocks.IgnoreFlagMessages)
-                        {
-                            byte[] imageData = Convert.FromBase64String(rgd.slots[0].exclusiveString);
-                            if (rgd.slots[0].itemAmount == 0)
-                            {
-                                CustomBlocks.DebugLog("Found flag with old save data. Updating to new save system.");
-                                // Handle older saves with a different form of image
-                                // save data.
-                                if (Raft_Network.IsHost)
-                                {
-                                    imageData = imageData.SanitizeImage(cb.GetBlockType());
-                                }
-                                else
-                                {
-                                    // Small protection against unsafe save data
-                                    // from remote host.
-                                    imageData = new byte[0];
-                                }
-                            }
-                            if (imageData != null)
-                            {
-                                cb.SetSendUpdates(false);
-                                cb.SetImageData(imageData);
-                                cb.SetSendUpdates(true);
-                            }
-                        }
-
-                        // Handle the custom sail.
-                        if (cb is Block_CustomSail)
-                        {
-                            Sail sail = block.GetComponent<Sail>();
-                            if (rgd.isOpen)
-                            {
-                                sail?.Open();
-                            }
-                            sail?.SetRotation(BitConverter.ToSingle(BitConverter.GetBytes(rgd.storageObjectIndex), 0));
-                        }
-                        else if (cb is Block_CustomBlock_Interactable)
-                        {
-                            Placeable_Interactable interact = block.GetComponent<Placeable_Interactable>();
-                            interact.RestoreIndex(BitConverter.ToInt32(BitConverter.GetBytes(rgd.storageObjectIndex), 0));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-
-
-    public enum Rotation
-    {
-        LEFT, // Rotate 90 degrees counter-clockwise.
-        FLIP, // Rotate 90 degrees clockwise.
-        NONE, // No rotation.
-        RIGHT, // Rotate 180 degrees.
     }
 }

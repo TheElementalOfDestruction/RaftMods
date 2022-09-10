@@ -22,7 +22,7 @@ namespace DestinyCustomBlocks
          * Retrieves the member of the BlockType enum that identifies this
          * class.
          */
-        CustomBlocks.BlockType GetBlockType();
+        BlockType GetBlockType();
 
         /*
          * Tells the block whether it should be broadcasting updates at all.
@@ -53,7 +53,7 @@ namespace DestinyCustomBlocks
             this.ImageData = data;
         }
 
-        CustomBlocks.BlockType ICustomBlock.GetBlockType()
+        BlockType ICustomBlock.GetBlockType()
         {
             return this.CustomBlockType;
         }
@@ -93,7 +93,7 @@ namespace DestinyCustomBlocks
             }
         }
 
-        public abstract CustomBlocks.BlockType CustomBlockType { get; }
+        public abstract BlockType CustomBlockType { get; }
 
         public byte[] ImageData
         {
@@ -258,7 +258,7 @@ namespace DestinyCustomBlocks
             this.ImageData = data;
         }
 
-        CustomBlocks.BlockType ICustomBlock.GetBlockType()
+        BlockType ICustomBlock.GetBlockType()
         {
             return this.CustomBlockType;
         }
@@ -298,7 +298,7 @@ namespace DestinyCustomBlocks
             }
         }
 
-        public abstract CustomBlocks.BlockType CustomBlockType { get; }
+        public abstract BlockType CustomBlockType { get; }
 
         public byte[] ImageData
         {
@@ -457,7 +457,7 @@ namespace DestinyCustomBlocks
             this.ImageData = data;
         }
 
-        CustomBlocks.BlockType ICustomBlock.GetBlockType()
+        BlockType ICustomBlock.GetBlockType()
         {
             return this.CustomBlockType;
         }
@@ -497,11 +497,11 @@ namespace DestinyCustomBlocks
             }
         }
 
-        public CustomBlocks.BlockType CustomBlockType
+        public BlockType CustomBlockType
         {
             get
             {
-                return CustomBlocks.BlockType.BED;
+                return BlockType.BED;
             }
         }
 
@@ -652,11 +652,11 @@ namespace DestinyCustomBlocks
 
     public class Block_CustomCurtainH : Block_CustomBlock_Interactable
     {
-        public override CustomBlocks.BlockType CustomBlockType
+        public override BlockType CustomBlockType
         {
             get
             {
-                return CustomBlocks.BlockType.CURTAIN_H;
+                return BlockType.CURTAIN_H;
             }
         }
 
@@ -675,11 +675,11 @@ namespace DestinyCustomBlocks
 
     public class Block_CustomCurtainV : Block_CustomBlock_Interactable
     {
-        public override CustomBlocks.BlockType CustomBlockType
+        public override BlockType CustomBlockType
         {
             get
             {
-                return CustomBlocks.BlockType.CURTAIN_V;
+                return BlockType.CURTAIN_V;
             }
         }
 
@@ -698,11 +698,11 @@ namespace DestinyCustomBlocks
 
     public class Block_CustomFlag : Block_CustomBlock_Base
     {
-        public override CustomBlocks.BlockType CustomBlockType
+        public override BlockType CustomBlockType
         {
             get
             {
-                return CustomBlocks.BlockType.FLAG;
+                return BlockType.FLAG;
             }
         }
 
@@ -722,13 +722,13 @@ namespace DestinyCustomBlocks
     {
         protected bool blockTypeSet = false;
 
-        private CustomBlocks.BlockType bt = CustomBlocks.BlockType.NONE;
+        private BlockType bt = BlockType.NONE;
 
-        public override CustomBlocks.BlockType CustomBlockType
+        public override BlockType CustomBlockType
         {
             get
             {
-                if (this.bt == CustomBlocks.BlockType.NONE)
+                if (this.bt == BlockType.NONE)
                 {
                     this.bt = CustomBlocks.ID_TO_BLOCKTYPE[this.buildableItem.UniqueIndex];
                 }
@@ -749,11 +749,11 @@ namespace DestinyCustomBlocks
 
     public class Block_CustomRugBig : Block_CustomBlock_Base
     {
-        public override CustomBlocks.BlockType CustomBlockType
+        public override BlockType CustomBlockType
         {
             get
             {
-                return CustomBlocks.BlockType.RUG_BIG;
+                return BlockType.RUG_BIG;
             }
         }
     }
@@ -762,11 +762,11 @@ namespace DestinyCustomBlocks
 
     public class Block_CustomRugSmall : Block_CustomBlock_Base
     {
-        public override CustomBlocks.BlockType CustomBlockType
+        public override BlockType CustomBlockType
         {
             get
             {
-                return CustomBlocks.BlockType.RUG_SMALL;
+                return BlockType.RUG_SMALL;
             }
         }
     }
@@ -775,11 +775,11 @@ namespace DestinyCustomBlocks
 
     public class Block_CustomSail : Block_CustomBlock_Base
     {
-        public override CustomBlocks.BlockType CustomBlockType
+        public override BlockType CustomBlockType
         {
             get
             {
-                return CustomBlocks.BlockType.SAIL;
+                return BlockType.SAIL;
             }
         }
 

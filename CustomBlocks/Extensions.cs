@@ -1,15 +1,8 @@
 using HarmonyLib;
-using I2.Loc;
-using Steamworks;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
-using System.Linq;
 using System.Reflection;
-using System.Runtime.Serialization;
-using System.Text;
 using UnityEngine;
 
 
@@ -73,14 +66,14 @@ namespace DestinyCustomBlocks
             Graphics.Blit(source, temp);
             temp.filterMode = FilterMode.Point;
 
-            Camera cam = CustomBlocks.renderSystem.GetComponentInChildren<Camera>(true);
+            Camera cam = CustomBlocks.iconRenderer;
             cam.targetTexture = temp;
-            CustomBlocks.renderSystem.GetComponentInChildren<UI.Text>();
+            cam.GetComponentInChildren<TMPro.TMP_Text>().text = text;
 
 
             var prev = RenderTexture.active;
             RenderTexture.active = temp;
-            var area = copyArea ?? new Rect(0, 0, temp.width, temp.height);
+            var area = new Rect(0, 0, temp.width, temp.height);
             area.y = temp.height - area.y - area.height;
             source.ReadPixels(area, 0, 0);
             source.Apply();
@@ -107,7 +100,7 @@ namespace DestinyCustomBlocks
         }
 
         // Aidan is a god.
-        public static void Edit(this Texture2D baseImg, Texture2D overlay, int xOffset, int yOffset, int targetX, int targetY, CustomBlocks.BlockType bt = CustomBlocks.BlockType.NONE, bool extend = false)
+        public static void Edit(this Texture2D baseImg, Texture2D overlay, int xOffset, int yOffset, int targetX, int targetY, BlockType bt = BlockType.NONE, bool extend = false)
         {
             var w = targetX;
             var h = targetY;
@@ -221,7 +214,7 @@ namespace DestinyCustomBlocks
             img.Apply();
         }
 
-        public static byte[] SanitizeImage(this byte[] arr, CustomBlocks.BlockType bt)
+        public static byte[] SanitizeImage(this byte[] arr, BlockType bt)
         {
             if (arr == null)
             {

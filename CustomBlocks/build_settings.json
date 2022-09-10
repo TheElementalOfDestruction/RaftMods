@@ -1,6 +1,12 @@
 {
     "slug": "customflags",
+    "ignoreFiles": [
+        "CustomBlocks.csproj",
+        "CustomBlocks.csproj.user"
+    ],
     "ignoreFolders": [
-        ".vs"
+        ".vs",
+        "bin",
+        "obj"
     ]
 }

@@ -1,8 +1,6 @@
 using Steamworks;
 using System;
-using System.Collections;
 using System.Reflection;
-using UnityEngine;
 
 
 namespace DestinyCustomBlocks
@@ -56,23 +54,11 @@ namespace DestinyCustomBlocks
                 ComponentManager<Raft_Network>.Value.RPC(msg, Target.Other, EP2PSend.k_EP2PSendReliable, NetworkChannel.Channel_Game);
             }
         }
-
-        /*
-        private IEnumerator SendMessage(Message_Animal_AnimTriggers msg)
-        {
-            Packet_Single packet = new PacketSingle(EP2PSend.k_EP2PSendReliable, msg);
-            BinaryFormatter bin = new BinaryFormatter();
-            MemoryStream mem = new MemorySteam();
-            bin.Serialize(mem, packet);
-
-            Raft_Network.Message_FragmentedPacket[] messages;
-        }
-        */
     }
 
 
 
-    public class CustomSail_Network : Sail//, IRaycastable
+    public class CustomSail_Network : Sail
     {
         public virtual void OnBlockPlaced()
         {

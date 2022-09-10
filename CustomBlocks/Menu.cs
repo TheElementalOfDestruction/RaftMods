@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using System.IO;
 using System.Linq;
@@ -104,7 +103,6 @@ namespace DestinyCustomBlocks
                 yield break;
             }
 
-            byte[] temp = null;
             string path = this.inputField.text;
 
             if (path.ToLower().StartsWith("http://") || path.ToLower().StartsWith("https://"))
@@ -157,7 +155,7 @@ namespace DestinyCustomBlocks
 
                 if (found)
                 {
-                    temp = File.ReadAllBytes(path);
+                    byte[] temp = File.ReadAllBytes(path);
                     byte[] temp2 = temp.Length > 0 ? temp.SanitizeImage(this.currentBlock.GetBlockType()) : temp;
                     Sprite s = CustomBlocks.CreateSpriteFromBytes(temp2, this.currentBlock.GetBlockType());
                     if (temp2.Length == 0 || s == null)
