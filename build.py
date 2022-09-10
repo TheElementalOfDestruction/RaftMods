@@ -24,8 +24,15 @@ def main():
             for modFileName in mod.glob('**/*'):
                 # Skip non-files and the build settings.
                 if modFileName.is_file() and modFileName.name != 'build_settings.json':
+                    filePath = '/'.join(modFileName.parts[pathLen:]
+                    # Starting to use continutes here instead of nesting further
+                    # and further.
+                    if filePath in settings['ignoreFiles']:
+                        continue
+                    if any(filePath.startswith(x) for x in settings['ignoreFolders']:
+                        continue
                     # Open the file in the zip file.
-                    with zf.open('/'.join(modFileName.parts[pathLen:]), 'w') as zmf:
+                    with zf.open(filePath, 'w') as zmf:
                         # Copy the data.
                         zmf.write(modFileName.read_bytes())
 
