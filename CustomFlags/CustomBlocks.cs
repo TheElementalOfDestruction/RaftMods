@@ -132,6 +132,8 @@ namespace DestinyCustomBlocks
             { BlockType.POSTER_V_9_16, new PosterData("POSTER_V_9_16", 1080, 1920, 1.125f) },
             { BlockType.POSTER_H_4_3, new PosterData("POSTER_H_4_3", 1440, 1080, 1.5f) },
             { BlockType.POSTER_V_3_4, new PosterData("POSTER_V_3_4", 1080, 1440, 1.125f) },
+            { BlockType.POSTER_H_3_2, new PosterData("POSTER_H_3_2", 1620, 1080, 1.6875f) },
+            { BlockType.POSTER_V_2_3, new PosterData("POSTER_V_2_3", 1080, 1620, 1.125f) },
         };
         public static readonly Dictionary<BlockType, string[]> POSTER_STRINGS = new Dictionary<BlockType, string[]>()
         {
@@ -143,7 +145,6 @@ namespace DestinyCustomBlocks
                     "CustomPosters",
                     "Custom Posters",
                     "A customizable poster.",
-                    "poster_h_16_9_icon.png"
                 }
             },
             {
@@ -154,7 +155,6 @@ namespace DestinyCustomBlocks
                     "CustomPosters",
                     "Custom Posters",
                     "A customizable poster.",
-                    "poster_v_9_16_icon.png"
                 }
             },
             {
@@ -165,7 +165,6 @@ namespace DestinyCustomBlocks
                     "CustomPosters",
                     "Custom Posters",
                     "A customizable poster.",
-                    "poster_h_4_3_icon.png"
                 }
             },
             {
@@ -176,7 +175,26 @@ namespace DestinyCustomBlocks
                     "CustomPosters",
                     "Custom Posters",
                     "A customizable poster.",
-                    "poster_v_3_4_icon.png"
+                }
+            },
+            {
+                BlockType.POSTER_H_3_2, new string[]
+                {
+                    "destiny_CustomPoster_h_3_2",
+                    "Custom Poster (3:2)",
+                    "CustomPosters",
+                    "Custom Posters",
+                    "A customizable poster.",
+                }
+            },
+            {
+                BlockType.POSTER_V_2_3, new string[]
+                {
+                    "destiny_CustomPoster_v_2_3",
+                    "Custom Poster (2:3)",
+                    "CustomPosters",
+                    "Custom Posters",
+                    "A customizable poster.",
                 }
             },
         };
@@ -244,9 +262,6 @@ namespace DestinyCustomBlocks
                 return CustomBlocks.instance.ExtraSettingsAPI_GetCheckboxState("useMipMaps");
             }
         }
-
-        // Just leaving the command here that was used in testing.
-        // FindObjectOfType<Streamer>().GetComponent<Block>().occupyingComponent.renderers[1]; y.material = j;
 
         public IEnumerator Start()
         {
@@ -755,9 +770,7 @@ namespace DestinyCustomBlocks
             customBlock.settings_Inventory.Description = data[4];
 
             // Set the icon.
-            Texture2D iconTex = new Texture2D(512, 512, TextureFormat.RGBA32, false);
-            ImageConversion.LoadImage(iconTex, GetEmbeddedFileBytes($"general_assets/{data[5]}"));
-            customBlock.settings_Inventory.Sprite = Sprite.Create(iconTex, new Rect(0, 0, 512, 512), new Vector2(0.5f, 0.5f));
+            customBlock.settings_Inventory.Sprite = pd.CreateIcon();
 
             // Localization stuff.
             customBlock.settings_Inventory.LocalizationTerm = $"Item/{data[0]}";
@@ -1401,6 +1414,19 @@ namespace DestinyCustomBlocks
 
                 return ret;
             }
+
+            public Sprite CreateIcon()
+            {
+                // Load the base texture.
+                Texture2D iconTex = new Texture2D(512, 512, TextureFormat.RGBA32, false);
+                ImageConversion.LoadImage(iconTex, GetEmbeddedFileBytes("general_assets/poster_icon_base.png"));
+
+                // Place the text in the icon.
+
+
+                // Create and return the sprite.
+                return Sprite.Create(iconTex, new Rect(0, 0, 512, 512), new Vector2(0.5f, 0.5f));
+            }
         }
     }
 
@@ -1532,6 +1558,27 @@ namespace DestinyCustomBlocks
 
     static class Texture2DExtension
     {
+        public static void AddText(this Texture2D source, string text)
+        {
+            var temp = RenderTexture.GetTemporary(source.width, source.height, 0);
+            Graphics.Blit(source, temp);
+            temp.filterMode = FilterMode.Point;
+
+            Camera cam = CustomBlocks.renderSystem.GetComponentInChildren<Camera>(true);
+            cam.targetTexture = temp;
+            var
+
+
+            var prev = RenderTexture.active;
+            RenderTexture.active = temp;
+            var area = copyArea ?? new Rect(0, 0, temp.width, temp.height);
+            area.y = temp.height - area.y - area.height;
+            source.ReadPixels(area, 0, 0);
+            source.Apply();
+            RenderTexture.active = prev;
+            RenderTexture.ReleaseTemporary(temp);
+        }
+
         // How is Aidan so amazing?
         public static Texture2D CreateReadable(this Texture2D source, Rect? copyArea = null, RenderTextureFormat format = RenderTextureFormat.Default, RenderTextureReadWrite readWrite = RenderTextureReadWrite.Default, TextureFormat? targetFormat = null, bool mipChain = false)
         {
