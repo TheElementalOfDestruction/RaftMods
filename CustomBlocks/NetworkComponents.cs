@@ -50,8 +50,16 @@ namespace DestinyCustomBlocks
         {
             if (LoadSceneManager.IsGameSceneLoaded && !CustomBlocks.IgnoreFlagMessages)
             {
+                Raft_Network net = ComponentManager<Raft_Network>.Value;
                 var msg = new Message_Animal_AnimTriggers((Messages)(-75), this, this.ObjectIndex, new string[] { Convert.ToBase64String(data) });
-                ComponentManager<Raft_Network>.Value.RPC(msg, Target.Other, EP2PSend.k_EP2PSendReliable, NetworkChannel.Channel_Game);
+                if (Raft_Network.IsHost)
+                {
+                    ComponentManager<Raft_Network>.Value.RPC(msg, Target.Other, EP2PSend.k_EP2PSendReliable, NetworkChannel.Channel_Game);
+                }
+                else
+                {
+                    net.SendP2P(net.HostID, msg, EP2PSend.k_EP2PSendReliable, NetworkChannel.Channel_Game);
+                }
             }
         }
     }
@@ -110,8 +118,16 @@ namespace DestinyCustomBlocks
         {
             if (LoadSceneManager.IsGameSceneLoaded && !CustomBlocks.IgnoreFlagMessages)
             {
+                Raft_Network net = ComponentManager<Raft_Network>.Value;
                 var msg = new Message_Animal_AnimTriggers((Messages)(-75), this, this.ObjectIndex, new string[] { Convert.ToBase64String(data) });
-                ComponentManager<Raft_Network>.Value.RPC(msg, Target.Other, EP2PSend.k_EP2PSendReliable, NetworkChannel.Channel_Game);
+                if (Raft_Network.IsHost)
+                {
+                    ComponentManager<Raft_Network>.Value.RPC(msg, Target.Other, EP2PSend.k_EP2PSendReliable, NetworkChannel.Channel_Game);
+                }
+                else
+                {
+                    net.SendP2P(net.HostID, msg, EP2PSend.k_EP2PSendReliable, NetworkChannel.Channel_Game);
+                }
             }
         }
     }
@@ -164,8 +180,16 @@ namespace DestinyCustomBlocks
         {
             if (LoadSceneManager.IsGameSceneLoaded && !CustomBlocks.IgnoreFlagMessages)
             {
-                var msg = new Message_Animal_AnimTriggers((Messages)(-75), ComponentManager<Raft_Network>.Value.NetworkIDManager, this.ObjectIndex, new string[] { Convert.ToBase64String(data) });
-                ComponentManager<Raft_Network>.Value.RPC(msg, Target.Other, EP2PSend.k_EP2PSendReliable, NetworkChannel.Channel_Game);
+                Raft_Network net = ComponentManager<Raft_Network>.Value;
+                var msg = new Message_Animal_AnimTriggers((Messages)(-75), this, this.ObjectIndex, new string[] { Convert.ToBase64String(data) });
+                if (Raft_Network.IsHost)
+                {
+                    ComponentManager<Raft_Network>.Value.RPC(msg, Target.Other, EP2PSend.k_EP2PSendReliable, NetworkChannel.Channel_Game);
+                }
+                else
+                {
+                    net.SendP2P(net.HostID, msg, EP2PSend.k_EP2PSendReliable, NetworkChannel.Channel_Game);
+                }
             }
         }
     }

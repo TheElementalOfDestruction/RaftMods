@@ -11,10 +11,15 @@
         SAIL,
         POSTER_H_16_9,
         POSTER_V_9_16,
+        POSTER_H_5_3,
+        POSTER_V_3_5,
         POSTER_H_4_3,
         POSTER_V_3_4,
         POSTER_H_3_2,
         POSTER_V_2_3,
+        POSTER_H_2_1,
+        POSTER_V_1_2,
+        POSTER_1_1,
         // Special value used for the edit function to not mirror.
         NONE,
         // Special value used for the icons.

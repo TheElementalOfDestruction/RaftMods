@@ -30,6 +30,11 @@ namespace DestinyCustomBlocks
             { BlockType.POSTER_V_3_4, (352, 25934) },
             { BlockType.POSTER_H_3_2, (352, 25935) },
             { BlockType.POSTER_V_2_3, (352, 25936) },
+            { BlockType.POSTER_H_2_1, (352, 25939) },
+            { BlockType.POSTER_V_1_2, (352, 25940) },
+            { BlockType.POSTER_H_5_3, (352, 25941) },
+            { BlockType.POSTER_V_3_5, (352, 25942) },
+            { BlockType.POSTER_1_1, (352, 25943) },
         };
         private static readonly Dictionary<BlockType, string> FOLDER_NAMES = new Dictionary<BlockType, string>()
         {
@@ -43,14 +48,19 @@ namespace DestinyCustomBlocks
             { BlockType.RUG_SMALL, "rug_small" },
             { BlockType.POSTER_H_16_9, "poster_h" },
             { BlockType.POSTER_V_9_16, "poster_v" },
+            { BlockType.POSTER_H_5_3, "poster_h" },
+            { BlockType.POSTER_V_3_5, "poster_v" },
             { BlockType.POSTER_H_4_3, "poster_h" },
             { BlockType.POSTER_V_3_4, "poster_v" },
             { BlockType.POSTER_H_3_2, "poster_h" },
             { BlockType.POSTER_V_2_3, "poster_v" },
+            { BlockType.POSTER_H_2_1, "poster_h" },
+            { BlockType.POSTER_V_1_2, "poster_v" },
+            { BlockType.POSTER_1_1, "poster_h" },
         };
 
         public static readonly int CUSTOM_BLOCK_ID_MIN = 25924;
-        public static readonly int CUSTOM_BLOCK_ID_MAX = 25936;
+        public static readonly int CUSTOM_BLOCK_ID_MAX = 25943;
 
         public static readonly Dictionary<BlockType, (int, int)> LOCATIONS = new Dictionary<BlockType, (int, int)>()
         {
@@ -64,10 +74,15 @@ namespace DestinyCustomBlocks
             { BlockType.SAIL, (3, 132) },
             { BlockType.POSTER_H_16_9, (-2, -2) },
             { BlockType.POSTER_V_9_16, (-2, -2) },
+            { BlockType.POSTER_H_5_3, (-2, -2) },
+            { BlockType.POSTER_V_3_5, (-2, -2) },
             { BlockType.POSTER_H_4_3, (-2, -2) },
             { BlockType.POSTER_V_3_4, (-2, -2) },
             { BlockType.POSTER_H_3_2, (-2, -2) },
             { BlockType.POSTER_V_2_3, (-2, -2) },
+            { BlockType.POSTER_H_2_1, (-2, -2) },
+            { BlockType.POSTER_V_1_2, (-2, -2) },
+            { BlockType.POSTER_1_1, (-2, -2) },
         };
         public static readonly Dictionary<BlockType, (int, int)> SIZES = new Dictionary<BlockType, (int, int)>()
         {
@@ -82,10 +97,15 @@ namespace DestinyCustomBlocks
             { BlockType.SAIL, (794, 674) },
             { BlockType.POSTER_H_16_9, (1920, 1080) },
             { BlockType.POSTER_V_9_16, (1080, 1920) },
+            { BlockType.POSTER_H_5_3, (1800, 1080) },
+            { BlockType.POSTER_V_3_5, (1080, 1800) },
             { BlockType.POSTER_H_4_3, (1440, 1080) },
             { BlockType.POSTER_V_3_4, (1080, 1440) },
             { BlockType.POSTER_H_3_2, (1620, 1080) },
             { BlockType.POSTER_V_2_3, (1080, 1620) },
+            { BlockType.POSTER_H_2_1, (2160, 1080) },
+            { BlockType.POSTER_V_1_2, (1080, 2160) },
+            { BlockType.POSTER_1_1, (1080, 1080) },
         };
         // Dictionary to tell what axis to mirror images on. Result is a tuple
         // of whether to mirror the x and whether to mirror the y.
@@ -101,10 +121,15 @@ namespace DestinyCustomBlocks
             { BlockType.SAIL, (true, false) },
             { BlockType.POSTER_H_16_9, (false, false) },
             { BlockType.POSTER_V_9_16, (false, false) },
+            { BlockType.POSTER_H_5_3, (false, false) },
+            { BlockType.POSTER_V_3_5, (false, false) },
             { BlockType.POSTER_H_4_3, (false, false) },
             { BlockType.POSTER_V_3_4, (false, false) },
             { BlockType.POSTER_H_3_2, (false, false) },
             { BlockType.POSTER_V_2_3, (false, false) },
+            { BlockType.POSTER_H_2_1, (false, false) },
+            { BlockType.POSTER_V_1_2, (false, false) },
+            { BlockType.POSTER_1_1, (false, false) },
         };
 
         public static readonly Dictionary<BlockType, SplitImageData[]> SPLIT_IMAGES = new Dictionary<BlockType, SplitImageData[]>()
@@ -122,10 +147,15 @@ namespace DestinyCustomBlocks
         {
             { BlockType.POSTER_H_16_9, new PosterData("16:9", 1920, 1080, 2f, -0.036f) },
             { BlockType.POSTER_V_9_16, new PosterData("9:16", 1080, 1920, 1.125f, 0.4f) },
+            { BlockType.POSTER_H_5_3, new PosterData("5:3", 1800, 1080, 1.5f, -0.036f) },
+            { BlockType.POSTER_V_3_5, new PosterData("3:5", 1080, 1800, 1.125f, 0f) },
             { BlockType.POSTER_H_4_3, new PosterData("4:3", 1440, 1080, 1.5f, -0.036f) },
             { BlockType.POSTER_V_3_4, new PosterData("3:4", 1080, 1440, 1.125f, 0.15f) },
             { BlockType.POSTER_H_3_2, new PosterData("3:2", 1620, 1080, 1.6875f, -0.036f) },
             { BlockType.POSTER_V_2_3, new PosterData("2:3", 1080, 1620, 1.125f, 0.245f) },
+            { BlockType.POSTER_H_2_1, new PosterData("2:1", 2160, 1080, 2.25f, 0f) },
+            { BlockType.POSTER_V_1_2, new PosterData("1:2", 1080, 2160, 1.125f, -0.036f) },
+            { BlockType.POSTER_1_1, new PosterData("1:1", 1080, 1080, 1.125f, -0.036f) },
         };
         public static readonly Dictionary<BlockType, string[]> POSTER_STRINGS = new Dictionary<BlockType, string[]>()
         {
@@ -217,6 +247,8 @@ namespace DestinyCustomBlocks
         private Harmony harmony;
         private Transform prefabHolder;
         private AssetBundle bundle;
+        // Store the first poster here so we can do skins.
+        private Item_Base posterBase;
 
         public static bool IgnoreFlagMessages
         {
@@ -463,6 +495,8 @@ namespace DestinyCustomBlocks
                                  }, 5),*/
             };
 
+            List<Item_Base> posters = new List<Item_Base>();
+
             foreach (BlockType bt in POSTER_DATA.Keys)
             {
                 PosterData pd = POSTER_DATA[bt];
@@ -470,8 +504,17 @@ namespace DestinyCustomBlocks
                 this.AddBaseTextures(bt, pd.CreateMaterial(), $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
                 this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
                 this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
-                this.customItems.Add(this.CreateGenericCustomPoster<Block_CustomPoster, CustomBlock_Network>(IDS[bt].Item1, IDS[bt].Item2, POSTER_STRINGS[bt], pd, recipe, CraftingCategory.Decorations)); // Make sure to give correct block type.
+                Item_Base poster = this.CreateGenericCustomPoster<Block_CustomPoster, CustomBlock_Network>(IDS[bt].Item1, IDS[bt].Item2, POSTER_STRINGS[bt], pd, recipe, CraftingCategory.Decorations);
+                this.customItems.Add(poster);
+                if (!this.posterBase)
+                {
+                    this.posterBase = poster;
+                }
+                posters.Add(poster);
+                poster.settings_recipe.baseSkinItem = this.posterBase;
             }
+
+            Traverse.Create(this.posterBase).Field("skins").SetValue(posters.ToArray());
         }
 
         /*
