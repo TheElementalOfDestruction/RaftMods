@@ -21,21 +21,33 @@ namespace DestinyCustomBlocks
                         if (Raft_Network.IsHost || !CustomBlocks.IgnoreFlagMessages)
                         {
                             byte[] imageData = Convert.FromBase64String(rgd.slots[0].exclusiveString);
-                            if (rgd.slots[0].itemAmount == 0)
+                            switch (rgd.slots[0].itemAmount)
                             {
-                                CustomBlocks.DebugLog("Found flag with old save data. Updating to new save system.");
-                                // Handle older saves with a different form of image
-                                // save data.
-                                if (Raft_Network.IsHost)
-                                {
-                                    imageData = imageData.SanitizeImage(cb.GetBlockType());
-                                }
-                                else
-                                {
-                                    // Small protection against unsafe save data
-                                    // from remote host.
-                                    imageData = new byte[0];
-                                }
+                                // First versions used actual image bytes. This updates it.
+                                case 0:
+                                    CustomBlocks.DebugLog("Found flag with old save data. Updating to new save system.");
+                                    // Handle older saves with a different form of image
+                                    // save data.
+                                    if (Raft_Network.IsHost)
+                                    {
+                                        imageData = imageData.SanitizeImage(cb.GetBlockType());
+                                    }
+                                    else
+                                    {
+                                        // Small protection against unsafe save
+                                        // data from remote host.
+                                        imageData = new byte[0];
+                                    }
+                                    break;
+                                // This was used in all versions of CustomBlocks
+                                // before 3.1.0. Posters with this version need
+                                // to be scaled down to half size.
+                                case 1:
+                                    if (block is Block_CustomPoster)
+                                    {
+                                        imageData = imageData.FixPoster(cb.GetBlockType());
+                                    }
+                                    break;
                             }
                             if (imageData != null)
                             {

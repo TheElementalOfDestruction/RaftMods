@@ -54,6 +54,17 @@ namespace DestinyCustomBlocks
 
             return newMat;
         }
+
+        public static void FullDestroy(this Material mat)
+        {
+            if (mat != null)
+            {
+                UnityEngine.Object.DestroyImmediate(mat.GetTexture("_Diffuse"));
+                UnityEngine.Object.DestroyImmediate(mat.GetTexture("_MetallicRPaintMaskGSmoothnessA"));
+                UnityEngine.Object.DestroyImmediate(mat.GetTexture("_Normal"));
+                UnityEngine.Object.DestroyImmediate(mat);
+            }
+        }
     }
 
 
@@ -263,21 +274,13 @@ namespace DestinyCustomBlocks
             Texture2D tex = new Texture2D(size.Item1, size.Item2);
             tex.Edit(texOriginal, 0, 0, size.Item1, size.Item2);
 
-            Color32[] colors = tex.GetPixels32();
-            List<byte> bytes = new List<byte>();
-            foreach(var c in colors)
-            {
-                bytes.Add(c.r);
-                bytes.Add(c.g);
-                bytes.Add(c.b);
-                bytes.Add(c.a);
-            }
+            byte[] bytes = tex.GetPixels32().ToByteArray();
 
             // Clean up our textures.
             UnityEngine.Object.DestroyImmediate(tex);
             UnityEngine.Object.DestroyImmediate(texOriginal);
 
-            return bytes.ToArray();
+            return bytes;
         }
 
         public static Texture2D ToTexture2D(this byte[] arr, int width, int height)
@@ -293,39 +296,92 @@ namespace DestinyCustomBlocks
                 return null;
             }
 
-            List<Color32> colors = new List<Color32>();
-            Color32 currentColor = new Color32(0, 0, 0, 0);
+            var tex = new Texture2D(width, height);
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.SetPixels32(arr.ToColor32Array());
+            return tex;
+        }
 
-            for (int i = 0; i < arr.Length; ++i)
+        public static Color32[] ToColor32Array(this byte[] data)
+        {
+            if (data == null)
+            {
+                return null;
+            }
+
+            if ((data.Length & 3) != 0)
+            {
+                // If not a multiple of 4.
+                return null;
+            }
+
+            Color32[] colors = new Color32[data.Length / 4];
+
+            for (int i = 0; i < data.Length; ++i)
             {
                 // Shortcut for i % 4;
                 switch (i & 3)
                 {
                     case 0:
-                        if (i != 0)
-                        {
-                            colors.Add(currentColor);
-                            currentColor = new Color32(0, 0, 0, 0);
-                        }
-                        currentColor.r = arr[i];
+                        colors[i >> 2].r = data[i];
                         break;
                     case 1:
-                        currentColor.g = arr[i];
+                        colors[i >> 2].g = data[i];
                         break;
                     case 2:
-                        currentColor.b = arr[i];
+                        colors[i >> 2].b = data[i];
                         break;
                     case 3:
-                        currentColor.a = arr[i];
+                        colors[i >> 2].a = data[i];
                         break;
                 }
             }
-            colors.Add(currentColor);
+            return colors;
+        }
 
-            var tex = new Texture2D(width, height);
-            tex.wrapMode = TextureWrapMode.Clamp;
-            tex.SetPixels32(colors.ToArray());
-            return tex;
+        public static byte[] ToByteArray(this Color32[] colors)
+        {
+            byte[] bytes = new byte[colors.Length * 4];
+
+            for (int i = 0; i < colors.Length; ++i)
+            {
+                bytes[i << 2] = colors[i].r;
+                bytes[(i << 2) + 1] = colors[i].g;
+                bytes[(i << 2) + 2] = colors[i].b;
+                bytes[(i << 2) + 3] = colors[i].a;
+            }
+
+            return bytes;
+        }
+
+        public static byte[] FixPoster(this byte[] data, BlockType bt)
+        {
+            if (data == null)
+            {
+                return null;
+            }
+
+            // Convert to an array of colors.
+            Color32[] colors = data.ToColor32Array();
+
+            if (colors == null)
+            {
+                return null;
+            }
+
+            // Create a texture which we will then resize.
+            var size = CustomBlocks.SIZES[bt];
+            Texture2D oldPoster = new Texture2D(size.Item1 * 2, size.Item2 * 2);
+            oldPoster.SetPixels32(colors);
+            Texture2D newPoster = new Texture2D(size.Item1, size.Item2);
+            newPoster.Edit(oldPoster, 0, 0, size.Item1, size.Item2, BlockType.NONE, false);
+
+            byte[] bytes = newPoster.GetPixels32().ToByteArray();
+
+            UnityEngine.Object.DestroyImmediate(oldPoster);
+            UnityEngine.Object.DestroyImmediate(newPoster);
+
+            return bytes;
         }
     }
 

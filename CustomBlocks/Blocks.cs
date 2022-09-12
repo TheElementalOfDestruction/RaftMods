@@ -199,7 +199,7 @@ namespace DestinyCustomBlocks
             r.CopyFieldsOf(new RGD_Block(RGDType.Block, this));
             r.slots = new RGD_Slot[] { CustomBlocks.CreateObject<RGD_Slot>() };
             r.slots[0].exclusiveString = Convert.ToBase64String(this.ImageData);
-            r.slots[0].itemAmount = 1;
+            r.slots[0].itemAmount = 2;
             return r;
         }
 
@@ -399,7 +399,7 @@ namespace DestinyCustomBlocks
             r.CopyFieldsOf(new RGD_Block(RGDType.Block, this));
             r.slots = new RGD_Slot[] { CustomBlocks.CreateObject<RGD_Slot>() };
             r.slots[0].exclusiveString = Convert.ToBase64String(this.ImageData);
-            r.slots[0].itemAmount = 1;
+            r.slots[0].itemAmount = 2;
             r.storageObjectIndex = BitConverter.ToUInt32(BitConverter.GetBytes(this.GetComponent<Placeable_Interactable>().CurrentIndex), 0);
 
             return r;
@@ -607,7 +607,7 @@ namespace DestinyCustomBlocks
             r.CopyFieldsOf(new RGD_Block(RGDType.Block, this));
             r.slots = new RGD_Slot[] { CustomBlocks.CreateObject<RGD_Slot>() };
             r.slots[0].exclusiveString = Convert.ToBase64String(this.ImageData);
-            r.slots[0].itemAmount = 1;
+            r.slots[0].itemAmount = 2;
             return r;
         }
 

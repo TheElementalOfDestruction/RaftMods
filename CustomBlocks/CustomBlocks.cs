@@ -95,17 +95,17 @@ namespace DestinyCustomBlocks
             { BlockType.RUG_BIG, (627, 330) },
             { BlockType.RUG_SMALL, (385, 253) },
             { BlockType.SAIL, (794, 674) },
-            { BlockType.POSTER_H_16_9, (1920, 1080) },
-            { BlockType.POSTER_V_9_16, (1080, 1920) },
-            { BlockType.POSTER_H_5_3, (1800, 1080) },
-            { BlockType.POSTER_V_3_5, (1080, 1800) },
-            { BlockType.POSTER_H_4_3, (1440, 1080) },
-            { BlockType.POSTER_V_3_4, (1080, 1440) },
-            { BlockType.POSTER_H_3_2, (1620, 1080) },
-            { BlockType.POSTER_V_2_3, (1080, 1620) },
-            { BlockType.POSTER_H_2_1, (2160, 1080) },
-            { BlockType.POSTER_V_1_2, (1080, 2160) },
-            { BlockType.POSTER_1_1, (1080, 1080) },
+            { BlockType.POSTER_H_16_9, (960, 540) },
+            { BlockType.POSTER_V_9_16, (540, 960) },
+            { BlockType.POSTER_H_5_3, (900, 540) },
+            { BlockType.POSTER_V_3_5, (540, 900) },
+            { BlockType.POSTER_H_4_3, (720, 540) },
+            { BlockType.POSTER_V_3_4, (540, 720) },
+            { BlockType.POSTER_H_3_2, (810, 540) },
+            { BlockType.POSTER_V_2_3, (540, 810) },
+            { BlockType.POSTER_H_2_1, (1080, 540) },
+            { BlockType.POSTER_V_1_2, (540, 1080) },
+            { BlockType.POSTER_1_1, (540, 540) },
         };
         // Dictionary to tell what axis to mirror images on. Result is a tuple
         // of whether to mirror the x and whether to mirror the y.
@@ -145,17 +145,17 @@ namespace DestinyCustomBlocks
 
         public static readonly Dictionary<BlockType, PosterData> POSTER_DATA = new Dictionary<BlockType, PosterData>()
         {
-            { BlockType.POSTER_H_16_9, new PosterData("16:9", 1920, 1080, 2f, -0.036f) },
-            { BlockType.POSTER_V_9_16, new PosterData("9:16", 1080, 1920, 1.125f, 0.4f) },
-            { BlockType.POSTER_H_5_3, new PosterData("5:3", 1800, 1080, 1.5f, -0.15f) },
-            { BlockType.POSTER_V_3_5, new PosterData("3:5", 1080, 1800, 1.125f, 0.34f) },
-            { BlockType.POSTER_H_4_3, new PosterData("4:3", 1440, 1080, 1.5f, -0.036f) },
-            { BlockType.POSTER_V_3_4, new PosterData("3:4", 1080, 1440, 1.125f, 0.15f) },
-            { BlockType.POSTER_H_3_2, new PosterData("3:2", 1620, 1080, 1.6875f, -0.036f) },
-            { BlockType.POSTER_V_2_3, new PosterData("2:3", 1080, 1620, 1.125f, 0.245f) },
-            { BlockType.POSTER_H_2_1, new PosterData("2:1", 2160, 1080, 2.25f, -0.036f) },
-            { BlockType.POSTER_V_1_2, new PosterData("1:2", 1080, 2160, 1.125f, 0.525f) },
-            { BlockType.POSTER_1_1, new PosterData("1:1", 1080, 1080, 1.125f, -0.036f) },
+            { BlockType.POSTER_H_16_9, new PosterData("16:9", 960, 540, 2f, -0.036f) },
+            { BlockType.POSTER_V_9_16, new PosterData("9:16", 540, 960, 1.125f, 0.4f) },
+            { BlockType.POSTER_H_5_3, new PosterData("5:3", 900, 540, 1.5f, -0.15f) },
+            { BlockType.POSTER_V_3_5, new PosterData("3:5", 540, 900, 1.125f, 0.34f) },
+            { BlockType.POSTER_H_4_3, new PosterData("4:3", 720, 540, 1.5f, -0.036f) },
+            { BlockType.POSTER_V_3_4, new PosterData("3:4", 540, 720, 1.125f, 0.15f) },
+            { BlockType.POSTER_H_3_2, new PosterData("3:2", 810, 540, 1.6875f, -0.036f) },
+            { BlockType.POSTER_V_2_3, new PosterData("2:3", 540, 810, 1.125f, 0.245f) },
+            { BlockType.POSTER_H_2_1, new PosterData("2:1", 1080, 540, 2.25f, -0.036f) },
+            { BlockType.POSTER_V_1_2, new PosterData("1:2", 540, 1080, 1.125f, 0.525f) },
+            { BlockType.POSTER_1_1, new PosterData("1:1", 540, 540, 1.125f, -0.036f) },
         };
         public static readonly Dictionary<BlockType, string[]> POSTER_STRINGS = new Dictionary<BlockType, string[]>()
         {
@@ -271,6 +271,7 @@ namespace DestinyCustomBlocks
         // Dictionary for the default sprites.
         public Dictionary<BlockType, Sprite> defaultSprites;
 
+        private HNotification notification;
         private List<Item_Base> customItems;
         private Harmony harmony;
         private Transform prefabHolder;
@@ -318,7 +319,7 @@ namespace DestinyCustomBlocks
             }
         }
 
-        public IEnumerator Start()
+        IEnumerator Start()
         {
             CustomBlocks.modInfo = modlistEntry.jsonmodinfo;
             CustomBlocks.instance = this;
@@ -328,7 +329,7 @@ namespace DestinyCustomBlocks
             this.basePaints = new Dictionary<BlockType, Texture2D>();
             this.defaultMaterials = new Dictionary<BlockType, Material>();
             this.defaultSprites = new Dictionary<BlockType, Sprite>();
-            HNotification notification = HNotify.instance.AddNotification(HNotify.NotificationType.spinning, "Loading CustomBlocks...");
+            this.notification = HNotify.instance.AddNotification(HNotify.NotificationType.spinning, "Loading CustomBlocks...");
 
             // Now, load the menu from the asset bundle.
             var bundleLoadRequest = AssetBundle.LoadFromMemoryAsync(GetEmbeddedFileBytes("general_assets/customblocks.assets"));
@@ -347,7 +348,7 @@ namespace DestinyCustomBlocks
             catch (Exception e)
             {
                 Debug.LogError(e);
-                notification.Close();
+                this.notification?.Close();
                 yield break;
             }
 
@@ -364,7 +365,7 @@ namespace DestinyCustomBlocks
             catch (Exception e)
             {
                 Debug.LogError(e);
-                notification.Close();
+                this.notification?.Close();
                 yield break;
             }
 
@@ -389,7 +390,7 @@ namespace DestinyCustomBlocks
             catch (Exception e)
             {
                 Debug.LogError(e);
-                notification.Close();
+                this.notification?.Close();
                 yield break;
             }
 
@@ -414,7 +415,7 @@ namespace DestinyCustomBlocks
             catch (Exception e)
             {
                 Debug.LogError(e);
-                notification.Close();
+                this.notification?.Close();
                 yield break;
             }
             CustomBlocks.DebugLog($"3");
@@ -440,7 +441,7 @@ namespace DestinyCustomBlocks
             catch (Exception e)
             {
                 Debug.LogError(e);
-                notification.Close();
+                this.notification?.Close();
                 yield break;
             }
 
@@ -449,16 +450,8 @@ namespace DestinyCustomBlocks
 
             yield return new WaitForEndOfFrame();
 
-            try
-            {
-                this.SetupPosters();
-            }
-            catch (Exception e)
-            {
-                Debug.LogError(e);
-                notification.Close();
-                yield break;
-            }
+            yield return this.SetupPosters();
+
             CustomBlocks.DebugLog($"5");
             //yield return new WaitForSeconds(10);
 
@@ -472,7 +465,7 @@ namespace DestinyCustomBlocks
             catch (Exception e)
             {
                 Debug.LogError(e);
-                notification.Close();
+                this.notification?.Close();
                 yield break;
             }
 
@@ -480,7 +473,7 @@ namespace DestinyCustomBlocks
             Resources.UnloadUnusedAssets();
 
             CustomBlocks.Log("Mod has been loaded.");
-            notification?.Close();
+            this.notification?.Close();
         }
 
         public void OnModUnload()
@@ -529,21 +522,14 @@ namespace DestinyCustomBlocks
          */
         private void SetupBasicBlockData(BlockType bt)
         {
-            var watch = new System.Diagnostics.Stopwatch();
-            watch.Start();
             string imgDir = FOLDER_NAMES[bt];
-            CustomBlocks.DebugLog($"1: {watch.ElapsedMilliseconds} ms");
             this.AddBaseTextures(bt, this.GetOriginalMaterial(IDS[bt].Item1), $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
-            CustomBlocks.DebugLog($"2: {watch.ElapsedMilliseconds} ms");
             var def = GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt);
             this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(def, bt);
-            CustomBlocks.DebugLog($"3: {watch.ElapsedMilliseconds} ms");
             this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(def, bt);
-            CustomBlocks.DebugLog($"4: {watch.ElapsedMilliseconds} ms");
-            watch.Stop();
         }
 
-        private void SetupPosters()
+        private IEnumerator SetupPosters()
         {
             // This is the recipe for the posters.
             var recipe = new CostMultiple[]
@@ -565,18 +551,59 @@ namespace DestinyCustomBlocks
             {
                 PosterData pd = POSTER_DATA[bt];
                 string imgDir = FOLDER_NAMES[bt];
-                this.AddBaseTextures(bt, pd.CreateMaterial(), $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
-                var def = GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt);
-                this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(def, bt);
-                this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(def, bt);
-                Item_Base poster = this.CreateGenericCustomPoster<Block_CustomPoster, CustomBlock_Network>(IDS[bt].Item1, IDS[bt].Item2, POSTER_STRINGS[bt], pd, recipe, CraftingCategory.Skin);
-                this.customItems.Add(poster);
-                if (!this.posterBase)
+                try
                 {
-                    this.posterBase = poster;
+                    var originalMat = pd.CreateMaterial();
+                    this.AddBaseTextures(bt, originalMat, $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
+                    originalMat.FullDestroy();
                 }
-                posters.Add(poster);
-                poster.settings_recipe.baseSkinItem = this.posterBase;
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                    this.notification?.Close();
+                    yield break;
+                }
+
+                //CustomBlocks.DebugLog(bt);
+                //yield return new WaitForSeconds(10);
+
+                try
+                {
+                    var def = GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt);
+                    this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(def, bt);
+                    this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(def, bt);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                    this.notification?.Close();
+                    yield break;
+                }
+
+                //CustomBlocks.DebugLog(bt);
+                //yield return new WaitForSeconds(10);
+
+                yield return new WaitForEndOfFrame();
+
+                try
+                {
+                    Item_Base poster = this.CreateGenericCustomPoster<Block_CustomPoster, CustomBlock_Network>(IDS[bt].Item1, IDS[bt].Item2, POSTER_STRINGS[bt], pd, recipe, CraftingCategory.Skin);
+                    this.customItems.Add(poster);
+                    if (!this.posterBase)
+                    {
+                        this.posterBase = poster;
+                    }
+                    posters.Add(poster);
+                    poster.settings_recipe.baseSkinItem = this.posterBase;
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                    this.notification?.Close();
+                    yield break;
+                }
+
+                yield return new WaitForEndOfFrame();
             }
 
             Traverse trav = Traverse.Create(this.posterBase.settings_recipe);

@@ -75,11 +75,6 @@ namespace DestinyCustomBlocks
             }
         }
 
-        private void HandleError(ErrorType e)
-        {
-            CustomBlocks.Log(e);
-        }
-
         private void HandleError(string e)
         {
             CustomBlocks.Log(e);
@@ -140,6 +135,12 @@ namespace DestinyCustomBlocks
                 else
                 {
                     // Success!
+                    if (this.imageData.Length != 0)
+                    {
+                        // If we had image data before, cleanup the old sprite.
+                        DestroyImmediate(this.preview.overrideSprite.texture);
+                        DestroyImmediate(this.preview.overrideSprite);
+                    }
                     this.imageData = handler.data.SanitizeImage(this.currentBlock.GetBlockType());
                     this.preview.overrideSprite = CustomBlocks.CreateSpriteFromBytes(this.imageData, this.currentBlock.GetBlockType());
                 }
@@ -164,6 +165,12 @@ namespace DestinyCustomBlocks
                     }
                     else
                     {
+                        if (this.imageData.Length != 0)
+                        {
+                            // If we had image data before, cleanup the old sprite.
+                            DestroyImmediate(this.preview.overrideSprite.texture);
+                            DestroyImmediate(this.preview.overrideSprite);
+                        }
                         this.imageData = temp2;
                         this.preview.overrideSprite = s;
                     }
@@ -202,6 +209,12 @@ namespace DestinyCustomBlocks
             this.cg.blocksRaycasts = true;
             this.shown = true;
             this.currentBlock = cb;
+            if (this.imageData.Length != 0)
+            {
+                // If we had image data before, cleanup the old sprite.
+                DestroyImmediate(this.preview.overrideSprite.texture);
+                DestroyImmediate(this.preview.overrideSprite);
+            }
             this.imageData = cb.GetImageData();
             this.inputField.readOnly = false;
             this.preview.overrideSprite = CustomBlocks.CreateSpriteFromBytes(this.imageData, cb.GetBlockType());
@@ -215,14 +228,6 @@ namespace DestinyCustomBlocks
                 this.currentBlock.SetImageData(this.imageData);
             }
             this.HideMenu();
-        }
-
-        enum ErrorType
-        {
-            PATH_NOT_FOUND,
-            URL_NOT_FOUND,
-            URL_ERROR,
-            BAD_DATA
         }
     }
 }
