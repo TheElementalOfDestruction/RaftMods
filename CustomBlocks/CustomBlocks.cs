@@ -369,9 +369,6 @@ namespace DestinyCustomBlocks
                 yield break;
             }
 
-            CustomBlocks.DebugLog($"1");
-            //yield return new WaitForSeconds(10);
-
             yield return new WaitForEndOfFrame();
 
             foreach (BlockType bt in IDS.Keys)
@@ -394,9 +391,6 @@ namespace DestinyCustomBlocks
                 yield break;
             }
 
-            CustomBlocks.DebugLog($"2");
-            //yield return new WaitForSeconds(10);
-
             try
             {
                 // First thing is first, let's fetch our shader from the game.
@@ -418,8 +412,6 @@ namespace DestinyCustomBlocks
                 this.notification?.Close();
                 yield break;
             }
-            CustomBlocks.DebugLog($"3");
-            //yield return new WaitForSeconds(10);
 
             yield return new WaitForEndOfFrame();
 
@@ -445,15 +437,9 @@ namespace DestinyCustomBlocks
                 yield break;
             }
 
-            CustomBlocks.DebugLog($"4");
-            //yield return new WaitForSeconds(10);
-
             yield return new WaitForEndOfFrame();
 
             yield return this.SetupPosters();
-
-            CustomBlocks.DebugLog($"5");
-            //yield return new WaitForSeconds(10);
 
             yield return new WaitForEndOfFrame();
 
@@ -564,9 +550,6 @@ namespace DestinyCustomBlocks
                     yield break;
                 }
 
-                //CustomBlocks.DebugLog(bt);
-                //yield return new WaitForSeconds(10);
-
                 try
                 {
                     var def = GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt);
@@ -579,9 +562,6 @@ namespace DestinyCustomBlocks
                     this.notification?.Close();
                     yield break;
                 }
-
-                //CustomBlocks.DebugLog(bt);
-                //yield return new WaitForSeconds(10);
 
                 yield return new WaitForEndOfFrame();
 

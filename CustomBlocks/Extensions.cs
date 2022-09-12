@@ -361,6 +361,11 @@ namespace DestinyCustomBlocks
                 return null;
             }
 
+            if (data.Length == 0)
+            {
+                return data;
+            }
+
             // Convert to an array of colors.
             Color32[] colors = data.ToColor32Array();
 
