@@ -163,7 +163,6 @@ namespace DestinyCustomBlocks
                 }
 
                 // Setup the automatic resolution version and determine which to
-                // use.
                 this.fullResolutionMat = mat;
                 this.autoResolutionMat = mat.CreateMipMapEnabled();
                 if (CustomBlocks.UseMipMaps)
@@ -182,6 +181,9 @@ namespace DestinyCustomBlocks
                 {
                     this.GetComponent<CustomBlock_Network>()?.BroadcastChange(this.imageData);
                 }
+
+                Resources.UnloadUnusedAssets();
+
                 return true;
             }
             catch (Exception e)
@@ -385,6 +387,9 @@ namespace DestinyCustomBlocks
             {
                 this.GetComponent<CustomBlock_Network>()?.BroadcastChange(this.imageData);
             }
+
+            Resources.UnloadUnusedAssets();
+
             return true;
         }
 
@@ -590,6 +595,9 @@ namespace DestinyCustomBlocks
             {
                 this.GetComponent<CustomBlock_Network>()?.BroadcastChange(this.imageData);
             }
+
+            Resources.UnloadUnusedAssets();
+
             return true;
         }
 

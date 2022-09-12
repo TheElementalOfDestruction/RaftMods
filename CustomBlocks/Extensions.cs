@@ -111,11 +111,15 @@ namespace DestinyCustomBlocks
             var h = targetY;
             var mirrorX = CustomBlocks.MIRROR[bt].Item1 ? w - 1 : 0;
             var mirrorY = CustomBlocks.MIRROR[bt].Item2 ? h - 1 : 0;
+            var baseWidth = baseImg.width;
+
+            var pixels = baseImg.GetPixels();
+
             for (var x = 0; x < w; x++)
             {
                 for (var y = 0; y < h; y++)
                 {
-                    baseImg.SetPixel(xOffset + x, yOffset + y, baseImg.GetPixel(x, y).Overlay(overlay.GetPixelBilinear(Math.Abs((float)(mirrorX - x) / w), Math.Abs((float)(mirrorY - y) / h))));
+                    pixels[xOffset + x + (yOffset + y) * baseWidth] = overlay.GetPixelBilinear(Math.Abs((float)(mirrorX - x) / w), Math.Abs((float)(mirrorY - y) / h));
                 }
             }
 
@@ -125,28 +129,44 @@ namespace DestinyCustomBlocks
                 // This code extends the final pixel border outwards to help
                 // with mip maps.
                 // `i < borderSize` is the format.
+                // Additionally, it is in a try block to stop it if it tries to
+                // overflow the texture.
                 for (int i = 0; i < 3; ++i)
                 {
+                    // Given that *a lot* of values are used over and over again
+                    // and things get recalculated a lot, I'm storing a few of
+                    // them here to try and save time.
+                    var x1i = Math.Max(xOffset - (1 + i), 0);
+                    var xti = Math.Min(xOffset + targetX + i, baseImg.width);
+                    var xt1 = Math.Min(xOffset + targetX - 1, baseImg.width);
+
+                    var y1i = Math.Max((yOffset - (1 + i)) * baseWidth, 0);
+                    var yti = Math.Min((yOffset + targetY + i) * baseWidth, baseImg.height);
+                    var yt1 = Math.Min((yOffset + targetY - 1) * baseWidth, baseImg.height);
+                    var yw = Math.Min(yOffset * baseWidth, baseImg.height);
+
                     // Do the 4 corners.
-                    baseImg.SetPixel(xOffset - (1 + i), yOffset - (1 + i), baseImg.GetPixel(xOffset, yOffset));
-                    baseImg.SetPixel(xOffset + targetX + i, yOffset - (1 + i), baseImg.GetPixel(xOffset + targetX - 1, yOffset));
-                    baseImg.SetPixel(xOffset - (1 + i), yOffset + targetY, baseImg.GetPixel(xOffset, yOffset + targetY - 1));
-                    baseImg.SetPixel(xOffset + targetX + i, yOffset + targetY + i, baseImg.GetPixel(xOffset + targetX - 1, yOffset + targetY - 1));
+                    pixels[x1i + y1i] = pixels[xOffset + yw];
+                    pixels[xti + y1i] = pixels[xt1 + yw];
+                    pixels[x1i + (yOffset + targetY) * baseWidth] = pixels[xOffset + yt1];
+                    pixels[xti + yti] = pixels[xt1 + yt1];
 
                     for (int x = xOffset; x < xOffset + targetX; ++x)
                     {
-                        baseImg.SetPixel(x, yOffset - (1 + i), baseImg.GetPixel(x, yOffset));
-                        baseImg.SetPixel(x, yOffset + targetY + i, baseImg.GetPixel(x, yOffset + targetY - 1));
+                        pixels[x + y1i] = pixels[x + yw];
+                        pixels[x + yti] = pixels[x + yt1];
                     }
 
                     for (int y = yOffset; y < yOffset + targetY; ++y)
                     {
-                        baseImg.SetPixel(xOffset - (1 + i), y, baseImg.GetPixel(xOffset, y));
-                        baseImg.SetPixel(xOffset + targetX + i, y, baseImg.GetPixel(xOffset + targetX - 1, y));
+                        int yy = y * baseWidth;
+                        pixels[x1i + yy] = pixels[xOffset + yy];
+                        pixels[xti + yy] = pixels[xt1 + yy];
                     }
                 }
             }
 
+            baseImg.SetPixels(pixels);
             baseImg.Apply();
         }
 
@@ -253,6 +273,10 @@ namespace DestinyCustomBlocks
                 bytes.Add(c.a);
             }
 
+            // Clean up our textures.
+            UnityEngine.Object.DestroyImmediate(tex);
+            UnityEngine.Object.DestroyImmediate(texOriginal);
+
             return bytes.ToArray();
         }
 
@@ -302,17 +326,6 @@ namespace DestinyCustomBlocks
             tex.wrapMode = TextureWrapMode.Clamp;
             tex.SetPixels32(colors.ToArray());
             return tex;
-        }
-
-        public static Color Overlay(this Color a, Color b)
-        {
-            if (a.a <= 0)
-                return b;
-            if (b.a <= 0)
-                return a;
-            var r = b.a / (b.a + a.a * (1 - b.a));
-            float Ratio(float aV, float bV) => bV * r + aV * (1 - r);
-            return new Color(Ratio(a.r, b.r), Ratio(a.g, b.g), Ratio(a.b, b.b), b.a + a.a * (1 - b.a));
         }
     }
 

@@ -320,7 +320,9 @@ namespace DestinyCustomBlocks
 
         public IEnumerator Start()
         {
+            CustomBlocks.modInfo = modlistEntry.jsonmodinfo;
             CustomBlocks.instance = this;
+
             this.baseTextures = new Dictionary<BlockType, Texture2D>();
             this.baseNormals = new Dictionary<BlockType, Texture2D>();
             this.basePaints = new Dictionary<BlockType, Texture2D>();
@@ -366,6 +368,9 @@ namespace DestinyCustomBlocks
                 yield break;
             }
 
+            CustomBlocks.DebugLog($"1");
+            //yield return new WaitForSeconds(10);
+
             yield return new WaitForEndOfFrame();
 
             foreach (BlockType bt in IDS.Keys)
@@ -375,13 +380,24 @@ namespace DestinyCustomBlocks
 
             try
             {
-                CustomBlocks.modInfo = modlistEntry.jsonmodinfo;
                 this.harmony = new Harmony("com.destruction.CustomBlocks");
                 this.harmony.PatchAll(Assembly.GetExecutingAssembly());
                 this.prefabHolder = new GameObject("prefabHolder").transform;
                 this.prefabHolder.gameObject.SetActive(false);
                 DontDestroyOnLoad(this.prefabHolder.gameObject);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+                notification.Close();
+                yield break;
+            }
 
+            CustomBlocks.DebugLog($"2");
+            //yield return new WaitForSeconds(10);
+
+            try
+            {
                 // First thing is first, let's fetch our shader from the game.
                 CustomBlocks.shader = Shader.Find(" BlockPaint");
 
@@ -393,6 +409,7 @@ namespace DestinyCustomBlocks
                 this.SetupBasicBlockData(BlockType.RUG_BIG);
                 this.SetupBasicBlockData(BlockType.RUG_SMALL);
                 this.SetupBasicBlockData(BlockType.SAIL);
+
             }
             catch (Exception e)
             {
@@ -400,6 +417,8 @@ namespace DestinyCustomBlocks
                 notification.Close();
                 yield break;
             }
+            CustomBlocks.DebugLog($"3");
+            //yield return new WaitForSeconds(10);
 
             yield return new WaitForEndOfFrame();
 
@@ -425,6 +444,9 @@ namespace DestinyCustomBlocks
                 yield break;
             }
 
+            CustomBlocks.DebugLog($"4");
+            //yield return new WaitForSeconds(10);
+
             yield return new WaitForEndOfFrame();
 
             try
@@ -437,6 +459,8 @@ namespace DestinyCustomBlocks
                 notification.Close();
                 yield break;
             }
+            CustomBlocks.DebugLog($"5");
+            //yield return new WaitForSeconds(10);
 
             yield return new WaitForEndOfFrame();
 
@@ -451,6 +475,9 @@ namespace DestinyCustomBlocks
                 notification.Close();
                 yield break;
             }
+
+            // Clean up any leftover data.
+            Resources.UnloadUnusedAssets();
 
             CustomBlocks.Log("Mod has been loaded.");
             notification?.Close();
@@ -477,6 +504,7 @@ namespace DestinyCustomBlocks
             {
                 Destroy(CustomBlocks.menuAsset);
             }
+            Resources.UnloadUnusedAssets();
             CustomBlocks.Log("Mod has been unloaded.");
         }
 
@@ -501,10 +529,18 @@ namespace DestinyCustomBlocks
          */
         private void SetupBasicBlockData(BlockType bt)
         {
+            var watch = new System.Diagnostics.Stopwatch();
+            watch.Start();
             string imgDir = FOLDER_NAMES[bt];
+            CustomBlocks.DebugLog($"1: {watch.ElapsedMilliseconds} ms");
             this.AddBaseTextures(bt, this.GetOriginalMaterial(IDS[bt].Item1), $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
-            this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
-            this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
+            CustomBlocks.DebugLog($"2: {watch.ElapsedMilliseconds} ms");
+            var def = GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt);
+            this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(def, bt);
+            CustomBlocks.DebugLog($"3: {watch.ElapsedMilliseconds} ms");
+            this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(def, bt);
+            CustomBlocks.DebugLog($"4: {watch.ElapsedMilliseconds} ms");
+            watch.Stop();
         }
 
         private void SetupPosters()
@@ -530,8 +566,9 @@ namespace DestinyCustomBlocks
                 PosterData pd = POSTER_DATA[bt];
                 string imgDir = FOLDER_NAMES[bt];
                 this.AddBaseTextures(bt, pd.CreateMaterial(), $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
-                this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
-                this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt), bt);
+                var def = GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt);
+                this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(def, bt);
+                this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(def, bt);
                 Item_Base poster = this.CreateGenericCustomPoster<Block_CustomPoster, CustomBlock_Network>(IDS[bt].Item1, IDS[bt].Item2, POSTER_STRINGS[bt], pd, recipe, CraftingCategory.Skin);
                 this.customItems.Add(poster);
                 if (!this.posterBase)
@@ -577,6 +614,8 @@ namespace DestinyCustomBlocks
             this.baseTextures[bt] = add[0];
             this.baseNormals[bt] = add[1];
             this.basePaints[bt] = add[2];
+
+            DestroyImmediate(insertTex);
         }
 
         /*
@@ -596,6 +635,8 @@ namespace DestinyCustomBlocks
             // Create the material and put the flag inside of it.
             Material mat = CustomBlocks.instance.PrepareMaterial(bt);
             CustomBlocks.PlaceImageInMaterial(mat, tex, bt);
+
+            DestroyImmediate(tex);
 
             // Return it.
             return mat;
@@ -623,6 +664,8 @@ namespace DestinyCustomBlocks
             Texture2D imageTex = data.ToTexture2D(SIZES[bt].Item1, SIZES[bt].Item2);
             (int, int, int, int) newSize = CustomBlocks.ScaleToFit(SIZES[bt].Item1, SIZES[bt].Item2, 1524, 1024);
             container.Edit(imageTex, newSize.Item1, newSize.Item2, newSize.Item3, newSize.Item4);
+
+            DestroyImmediate(imageTex);
 
             return Sprite.Create(container, rect, pivot);
         }
@@ -1293,6 +1336,7 @@ namespace DestinyCustomBlocks
                     height = sid.widthHeight.Item2;
                 }
                 dest.Edit(slice, sid.destXY.Item1, sid.destXY.Item2, width, height, bt, true);
+                DestroyImmediate(slice);
             }
         }
 
