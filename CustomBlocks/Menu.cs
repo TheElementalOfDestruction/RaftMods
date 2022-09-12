@@ -47,8 +47,14 @@ namespace DestinyCustomBlocks
             this.preview = this.GetComponentsInChildren<UnityEngine.UI.Image>().First(x => x.gameObject.name.StartsWith("Preview"));
             this.inputField = this.GetComponentInChildren<TMPro.TMP_InputField>();
 
-            // Setup the text entry.
-            this.inputField.onSubmit.AddListener(this.LoadPreviewStartText);
+            // Setup the text entry. You would expect escape to not be
+            // considered submitting, but it is so we have to do this.
+            this.inputField.onSubmit.AddListener(text => {
+                if (!this.inputField.wasCanceled)
+                {
+                    this.LoadPreviewStart();
+                }
+            });
 
             this.HideMenu();
 
@@ -187,11 +193,6 @@ namespace DestinyCustomBlocks
             StartCoroutine(this.LoadPreview());
         }
 
-        public void LoadPreviewStartText(string _ = "")
-        {
-            StartCoroutine(this.LoadPreview());
-        }
-
         public void SetBlockDefault()
         {
             this.imageData = new byte[0];
@@ -200,25 +201,32 @@ namespace DestinyCustomBlocks
 
         public void ShowMenu(ICustomBlock cb)
         {
-            if (cb == null)
+            try
             {
-                return;
+                if (cb == null)
+                {
+                    return;
+                }
+                this.cg.alpha = 1;
+                this.cg.interactable = true;
+                this.cg.blocksRaycasts = true;
+                this.shown = true;
+                this.currentBlock = cb;
+                if (this.imageData != null && this.imageData.Length != 0)
+                {
+                    // If we had image data before, cleanup the old sprite.
+                    DestroyImmediate(this.preview.overrideSprite.texture);
+                    DestroyImmediate(this.preview.overrideSprite);
+                }
+                this.imageData = cb.GetImageData();
+                this.inputField.readOnly = false;
+                this.preview.overrideSprite = CustomBlocks.CreateSpriteFromBytes(this.imageData, cb.GetBlockType());
+                RAPI.ToggleCursor(true);
             }
-            this.cg.alpha = 1;
-            this.cg.interactable = true;
-            this.cg.blocksRaycasts = true;
-            this.shown = true;
-            this.currentBlock = cb;
-            if (this.imageData.Length != 0)
+            catch (System.Exception e)
             {
-                // If we had image data before, cleanup the old sprite.
-                DestroyImmediate(this.preview.overrideSprite.texture);
-                DestroyImmediate(this.preview.overrideSprite);
+                Debug.LogError(e);
             }
-            this.imageData = cb.GetImageData();
-            this.inputField.readOnly = false;
-            this.preview.overrideSprite = CustomBlocks.CreateSpriteFromBytes(this.imageData, cb.GetBlockType());
-            RAPI.ToggleCursor(true);
         }
 
         public void UpdateBlock()
