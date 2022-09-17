@@ -42,11 +42,8 @@ namespace DestinyCustomBlocks
                 // Get the original texture and create a new texture with mip
                 // maps enabled.
                 Texture2D originalTex = mat.GetTexture(prop) as Texture2D;
-                Texture2D newTex = new Texture2D(originalTex.width, originalTex.height, originalTex.format, true);
-
-                // Copy the image data.
-                newTex.SetPixels32(originalTex.GetPixels32());
-                newTex.Apply();
+                Texture2D newTex = originalTex.CreateReadable(true);
+                newTex.Apply(true, true);
 
                 // Add it to the material.
                 newMat.SetTexture(prop, newTex);
@@ -98,7 +95,7 @@ namespace DestinyCustomBlocks
         }
 
         // How is Aidan so amazing?
-        public static Texture2D CreateReadable(this Texture2D source, Rect? copyArea = null, RenderTextureFormat format = RenderTextureFormat.Default, RenderTextureReadWrite readWrite = RenderTextureReadWrite.Default, TextureFormat? targetFormat = null, bool mipChain = false)
+        public static Texture2D CreateReadable(this Texture2D source, bool mipChain = false, Rect? copyArea = null, RenderTextureFormat format = RenderTextureFormat.Default, RenderTextureReadWrite readWrite = RenderTextureReadWrite.Default, TextureFormat? targetFormat = null)
         {
             var temp = RenderTexture.GetTemporary(source.width, source.height, 0, format, readWrite);
             Graphics.Blit(source, temp);
@@ -148,18 +145,19 @@ namespace DestinyCustomBlocks
                     // and things get recalculated a lot, I'm storing a few of
                     // them here to try and save time.
                     var x1i = Math.Max(xOffset - (1 + i), 0);
-                    var xti = Math.Min(xOffset + targetX + i, baseImg.width);
-                    var xt1 = Math.Min(xOffset + targetX - 1, baseImg.width);
+                    var xti = Math.Min(xOffset + targetX + i, baseImg.width - 1);
+                    var xt1 = Math.Min(xOffset + targetX - 1, baseImg.width - 1);
 
                     var y1i = Math.Max((yOffset - (1 + i)) * baseWidth, 0);
-                    var yti = Math.Min((yOffset + targetY + i) * baseWidth, baseImg.height);
-                    var yt1 = Math.Min((yOffset + targetY - 1) * baseWidth, baseImg.height);
-                    var yw = Math.Min(yOffset * baseWidth, baseImg.height);
+                    var yti = Math.Min((yOffset + targetY + i) * baseWidth, baseImg.height - 1);
+                    var yt1 = Math.Min((yOffset + targetY - 1) * baseWidth, baseImg.height - 1);
+                    var yw = Math.Min(yOffset * baseWidth, baseImg.height - 1);
+                    var yt = Math.Min((yOffset + targetY) * baseWidth, baseImg.height - 1);
 
                     // Do the 4 corners.
                     pixels[x1i + y1i] = pixels[xOffset + yw];
                     pixels[xti + y1i] = pixels[xt1 + yw];
-                    pixels[x1i + (yOffset + targetY) * baseWidth] = pixels[xOffset + yt1];
+                    pixels[x1i + yt] = pixels[xOffset + yt1];
                     pixels[xti + yti] = pixels[xt1 + yt1];
 
                     for (int x = xOffset; x < xOffset + targetX; ++x)

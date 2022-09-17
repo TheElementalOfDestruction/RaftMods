@@ -509,9 +509,16 @@ namespace DestinyCustomBlocks
         private void SetupBasicBlockData(BlockType bt)
         {
             string imgDir = FOLDER_NAMES[bt];
-            this.AddBaseTextures(bt, this.GetOriginalMaterial(IDS[bt].Item1), $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
+            this.AddBaseTextures(bt, this.GetOriginalMaterial(IDS[bt].Item1), $"{imgDir}/default.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
+
+            // Setup the base material.
+            Material mat = new Material(CustomBlocks.shader);
+            mat.SetTexture("_Diffuse", this.baseTextures[bt]);
+            mat.SetTexture("_MetallicRPaintMaskGSmoothnessA", this.basePaints[bt]);
+            mat.SetTexture("_Normal", this.baseNormals[bt]);
+            this.defaultMaterials[bt] = mat;
+
             var def = GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt);
-            this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(def, bt);
             this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(def, bt);
         }
 
@@ -611,12 +618,12 @@ namespace DestinyCustomBlocks
             // Now we need to generate our normal map.
             add[1] = (originalMat.GetTexture("_Normal") as Texture2D).CreateReadable();
             ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(normal));
-            CustomBlocks.PlaceImageInTexture(add[1], insertTex, bt);
+            CustomBlocks.PlaceImageInTexture(add[1], insertTex, bt, true);
 
             // Now we need to generate our paint map.
             add[2] = (originalMat.GetTexture("_MetallicRPaintMaskGSmoothnessA") as Texture2D).CreateReadable();
             ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(paint));
-            CustomBlocks.PlaceImageInTexture(add[2], insertTex, bt);
+            CustomBlocks.PlaceImageInTexture(add[2], insertTex, bt, true);
 
             this.baseTextures[bt] = add[0];
             this.baseNormals[bt] = add[1];
@@ -641,7 +648,7 @@ namespace DestinyCustomBlocks
 
             // Create the material and put the flag inside of it.
             Material mat = CustomBlocks.instance.PrepareMaterial(bt);
-            CustomBlocks.PlaceImageInMaterial(mat, tex, bt);
+            CustomBlocks.PlaceImageInMaterial(mat, tex, bt, true);
 
             DestroyImmediate(tex);
 
@@ -671,6 +678,8 @@ namespace DestinyCustomBlocks
             Texture2D imageTex = data.ToTexture2D(SIZES[bt].Item1, SIZES[bt].Item2);
             (int, int, int, int) newSize = CustomBlocks.ScaleToFit(SIZES[bt].Item1, SIZES[bt].Item2, 1524, 1024);
             container.Edit(imageTex, newSize.Item1, newSize.Item2, newSize.Item3, newSize.Item4);
+            // Make the sprite texture no longer readable.
+            container.Apply(true, true);
 
             DestroyImmediate(imageTex);
 
@@ -1288,10 +1297,12 @@ namespace DestinyCustomBlocks
          * :param src: The source texture to add.
          * :param bt: The type of block the texture is. This tells where to
          *     place the texture and what size it will be.
+         * :param makeUnreadable: Sets the modified texture to no longer be
+         *     readable after the operation, saving memory (default: false).
          */
-        private static void PlaceImageInMaterial(Material dest, Texture2D src, BlockType bt)
+        private static void PlaceImageInMaterial(Material dest, Texture2D src, BlockType bt, bool makeUnreadable = false)
         {
-            CustomBlocks.PlaceImageInTexture(dest.GetTexture("_Diffuse") as Texture2D, src, bt);
+            CustomBlocks.PlaceImageInTexture(dest.GetTexture("_Diffuse") as Texture2D, src, bt, makeUnreadable);
         }
 
         /*
@@ -1301,8 +1312,10 @@ namespace DestinyCustomBlocks
          * :param src: The flag texture to add.
          * :param bt: The type of block the texture is. This tells where to
          *     place the texture and what size it will be.
+         * :param makeUnreadable: Sets the modified texture to no longer be
+         *     readable after the operation, saving memory.
          */
-        private static void PlaceImageInTexture(Texture2D dest, Texture2D src, BlockType bt)
+        private static void PlaceImageInTexture(Texture2D dest, Texture2D src, BlockType bt, bool makeUnreadable = false)
         {
             // A negative position means it's a split image.
             switch(LOCATIONS[bt].Item1)
@@ -1317,6 +1330,10 @@ namespace DestinyCustomBlocks
                 default:
                     dest.Edit(src, LOCATIONS[bt].Item1, LOCATIONS[bt].Item2, SIZES[bt].Item1, SIZES[bt].Item2, bt, true);
                     break;
+            }
+            if (makeUnreadable)
+            {
+                dest.Apply(true, true);
             }
         }
 

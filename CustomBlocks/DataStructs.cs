@@ -82,10 +82,12 @@ namespace DestinyCustomBlocks
                 this.textureSize = 4096;
             }
 
-            float uvTop = (heightPixels - 1) / (float)(this.textureSize - 1);
+            //float uvTop = (heightPixels - 1) / (float)(this.textureSize - 1);
+            float uvTop = 1f;
             float uvBottom = 0;
             float uvLeft = 0;
-            float uvRight = (widthPixels - 1) / (float)(this.textureSize - 1);
+            //float uvRight = (widthPixels - 1) / (float)(this.textureSize - 1);
+            float uvRight = 1f;
 
             this.uvs = new Vector2[]
             {
@@ -135,7 +137,8 @@ namespace DestinyCustomBlocks
         public Material CreateMaterial()
         {
             Material ret = new Material(CustomBlocks.shader);
-            Texture2D temp = new Texture2D(this.textureSize, this.textureSize);
+            //Texture2D temp = new Texture2D(this.textureSize, this.textureSize);
+            Texture2D temp = new Texture2D(this.widthPixels, this.heightPixels);
             ret.SetTexture("_Diffuse", temp);
             ret.SetTexture("_MetallicRPaintMaskGSmoothnessA", temp);
             ret.SetTexture("_Normal", temp);
