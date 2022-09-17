@@ -38,7 +38,6 @@ namespace DestinyCustomBlocks
         public float meshLeft;
         public float heightOffset;
         public Vector2[] uvs;
-        public int textureSize;
         public string ratio;
         public bool horizontal;
 
@@ -57,36 +56,10 @@ namespace DestinyCustomBlocks
             this.meshWidth = widthBlock;
             this.meshHeight =  heightPixels * (widthBlock / (widthPixels));
             this.horizontal = widthPixels >= heightPixels;
-            int biggestSizePixels = this.horizontal ? widthPixels : heightPixels;
 
-            if (biggestSizePixels > 4000)
-            {
-                throw new Exception("Height or width was greater than 4000");
-            }
-
-            // Determine the width and height to use for the texture.
-            if (biggestSizePixels <= 512)
-            {
-                this.textureSize = 512;
-            }
-            else if (biggestSizePixels <= 1024)
-            {
-                this.textureSize = 1024;
-            }
-            else if (biggestSizePixels <= 2048)
-            {
-                this.textureSize = 2048;
-            }
-            else
-            {
-                this.textureSize = 4096;
-            }
-
-            //float uvTop = (heightPixels - 1) / (float)(this.textureSize - 1);
             float uvTop = 1f;
             float uvBottom = 0;
             float uvLeft = 0;
-            //float uvRight = (widthPixels - 1) / (float)(this.textureSize - 1);
             float uvRight = 1f;
 
             this.uvs = new Vector2[]
@@ -137,7 +110,6 @@ namespace DestinyCustomBlocks
         public Material CreateMaterial()
         {
             Material ret = new Material(CustomBlocks.shader);
-            //Texture2D temp = new Texture2D(this.textureSize, this.textureSize);
             Texture2D temp = new Texture2D(this.widthPixels, this.heightPixels);
             ret.SetTexture("_Diffuse", temp);
             ret.SetTexture("_MetallicRPaintMaskGSmoothnessA", temp);
@@ -154,6 +126,8 @@ namespace DestinyCustomBlocks
 
             // Place the text in the icon.
             iconTex.AddText(this.ratio);
+            // Make unreadable.
+            iconTex.Apply(true, true);
 
             // Create and return the sprite.
             return Sprite.Create(iconTex, new Rect(0, 0, 512, 512), new Vector2(0.5f, 0.5f));
