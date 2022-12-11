@@ -801,8 +801,14 @@ namespace DestinyCustomBlocks
             }
         }
 
-        // We need to add sail data to this RGD.
         public override RGD Serialize_Save()
+        {
+            // For the network stuff, we need to do this on the network
+            // component.
+            return null;
+        }
+
+        public RGD_Storage GetSerialized()
         {
             RGD_Storage rgd = base.Serialize_Save() as RGD_Storage;
             // Attach our data to the existing save data.

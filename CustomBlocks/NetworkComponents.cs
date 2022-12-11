@@ -83,8 +83,7 @@ namespace DestinyCustomBlocks
 
         public override RGD Serialize_Save()
         {
-            // Override so that the block class handles the save.
-            return null;
+            return this.GetComponent<CustomSail>().GetSerialized();
         }
 
         public override bool Deserialize(Message_NetworkBehaviour msg, CSteamID remoteID)
