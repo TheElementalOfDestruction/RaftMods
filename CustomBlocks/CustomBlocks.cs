@@ -1427,7 +1427,7 @@ namespace DestinyCustomBlocks
             foreach (Block block in BlockCreator.GetPlacedBlocks())
             {
                 // Only do something for custom blocks.
-                block.GetComponent<ICustomBlock>()?.SwitchMipMapState(state);
+                block?.GetComponent<ICustomBlock>()?.SwitchMipMapState(state);
             }
         }
     }
