@@ -5,8 +5,13 @@ using System.Reflection;
 
 namespace DestinyCustomBlocks
 {
+    public interface ICustomBlockNetwork
+    {
+        void BroadcastChange(byte[] data);
+    }
+
     // Base class for custom block types' network behaviour.
-    public class CustomBlock_Network : MonoBehaviour_Network
+    public class CustomBlock_Network : MonoBehaviour_Network, ICustomBlockNetwork
     {
         public virtual void OnBlockPlaced()
         {
@@ -46,7 +51,7 @@ namespace DestinyCustomBlocks
             return base.Deserialize(msg, remoteID);
         }
 
-        public virtual void BroadcastChange(byte[] data)
+        void ICustomBlockNetwork.BroadcastChange(byte[] data)
         {
             if (LoadSceneManager.IsGameSceneLoaded && !CustomBlocks.IgnoreFlagMessages)
             {
@@ -66,7 +71,7 @@ namespace DestinyCustomBlocks
 
 
 
-    public class CustomSail_Network : Sail
+    public class CustomSail_Network : Sail, ICustomBlockNetwork
     {
         public virtual void OnBlockPlaced()
         {
@@ -83,7 +88,7 @@ namespace DestinyCustomBlocks
 
         public override RGD Serialize_Save()
         {
-            return this.GetComponent<CustomSail>().GetSerialized();
+            return this.GetComponent<Block_CustomSail>().GetSerialized();
         }
 
         public override bool Deserialize(Message_NetworkBehaviour msg, CSteamID remoteID)
@@ -113,7 +118,7 @@ namespace DestinyCustomBlocks
             return base.Deserialize(msg, remoteID);
         }
 
-        public virtual void BroadcastChange(byte[] data)
+        void ICustomBlockNetwork.BroadcastChange(byte[] data)
         {
             if (LoadSceneManager.IsGameSceneLoaded && !CustomBlocks.IgnoreFlagMessages)
             {
@@ -133,7 +138,7 @@ namespace DestinyCustomBlocks
 
 
 
-    public class CustomInteractableOC_Network : Placeable_Interactable_OpenClose
+    public class CustomInteractableOC_Network : Placeable_Interactable_OpenClose, ICustomBlockNetwork
     {
         protected override void BlockPlaced()
         {
@@ -175,7 +180,7 @@ namespace DestinyCustomBlocks
             return base.Deserialize(msg, remoteID);
         }
 
-        public virtual void BroadcastChange(byte[] data)
+        void ICustomBlockNetwork.BroadcastChange(byte[] data)
         {
             if (LoadSceneManager.IsGameSceneLoaded && !CustomBlocks.IgnoreFlagMessages)
             {

@@ -179,7 +179,7 @@ namespace DestinyCustomBlocks
                 this.rendererPatched = true;
                 if (this.sendUpdates)
                 {
-                    this.GetComponent<CustomBlock_Network>()?.BroadcastChange(this.imageData);
+                    this.GetComponent<ICustomBlockNetwork>()?.BroadcastChange(this.imageData);
                 }
 
                 Resources.UnloadUnusedAssets();
@@ -385,7 +385,7 @@ namespace DestinyCustomBlocks
             this.rendererPatched = true;
             if (this.sendUpdates)
             {
-                this.GetComponent<CustomBlock_Network>()?.BroadcastChange(this.imageData);
+                this.GetComponent<ICustomBlockNetwork>()?.BroadcastChange(this.imageData);
             }
 
             Resources.UnloadUnusedAssets();
@@ -593,7 +593,7 @@ namespace DestinyCustomBlocks
             this.rendererPatched = true;
             if (this.sendUpdates)
             {
-                this.GetComponent<CustomBlock_Network>()?.BroadcastChange(this.imageData);
+                this.GetComponent<ICustomBlockNetwork>()?.BroadcastChange(this.imageData);
             }
 
             Resources.UnloadUnusedAssets();
@@ -817,6 +817,11 @@ namespace DestinyCustomBlocks
             rgd.storageObjectIndex = BitConverter.ToUInt32(BitConverter.GetBytes(this.GetComponent<Sail>().LocalRotation), 0);
 
             return rgd;
+        }
+
+        public override RGD_Block GetBlockCreationData()
+        {
+            return this.GetSerialized();
         }
     }
 }
