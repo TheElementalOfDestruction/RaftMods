@@ -157,6 +157,7 @@ namespace DestinyCustomBlocks
             { BlockType.POSTER_V_1_2, new PosterData("1:2", 540, 1080, 1.125f, 0.525f) },
             { BlockType.POSTER_1_1, new PosterData("1:1", 540, 540, 1.125f, -0.036f) },
         };
+
         public static readonly Dictionary<BlockType, string[]> POSTER_STRINGS = new Dictionary<BlockType, string[]>()
         {
             {
@@ -247,6 +248,30 @@ namespace DestinyCustomBlocks
                     "A customizable poster.",
                 }
             },
+        };
+
+        // Tells whether the normal map should be replaced for a block type.
+        public static readonly Dictionary<BlockType, bool> OVERRIDE_NORMAL = new Dictionary<BlockType, bool>()
+        {
+            { BlockType.NONE, false },
+            { BlockType.BED, false },
+            { BlockType.CURTAIN_H, true },
+            { BlockType.CURTAIN_V, true },
+            { BlockType.FLAG, true },
+            { BlockType.RUG_BIG, true },
+            { BlockType.RUG_SMALL, true },
+            { BlockType.SAIL, false },
+            { BlockType.POSTER_H_16_9, true },
+            { BlockType.POSTER_V_9_16, true },
+            { BlockType.POSTER_H_5_3, true },
+            { BlockType.POSTER_V_3_5, true },
+            { BlockType.POSTER_H_4_3, true },
+            { BlockType.POSTER_V_3_4, true },
+            { BlockType.POSTER_H_3_2, true },
+            { BlockType.POSTER_V_2_3, true },
+            { BlockType.POSTER_H_2_1, true },
+            { BlockType.POSTER_V_1_2, true },
+            { BlockType.POSTER_1_1, true },
         };
 
         public static Dictionary<int, BlockType> ID_TO_BLOCKTYPE = new Dictionary<int, BlockType>();
@@ -616,9 +641,19 @@ namespace DestinyCustomBlocks
             CustomBlocks.PlaceImageInTexture(add[0], insertTex, bt);
 
             // Now we need to generate our normal map.
-            add[1] = (originalMat.GetTexture("_Normal") as Texture2D).CreateReadable();
-            ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(normal));
-            CustomBlocks.PlaceImageInTexture(add[1], insertTex, bt, true);
+            if (OVERRIDE_NORMAL[bt])
+            {
+                add[1] = (originalMat.GetTexture("_Normal") as Texture2D).CreateReadable();
+                ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(normal));
+                CustomBlocks.PlaceImageInTexture(add[1], insertTex, bt, true);
+            }
+            else
+            {
+                // If we are not overriding the normal, copy it without the
+                // mipmaps and immediately make it unreadable.
+                add[1] = (originalMat.GetTexture("_Normal") as Texture2D).CreateReadable();
+                add[1].Apply(true, true);
+            }
 
             // Now we need to generate our paint map.
             add[2] = (originalMat.GetTexture("_MetallicRPaintMaskGSmoothnessA") as Texture2D).CreateReadable();

@@ -104,6 +104,10 @@ namespace DestinyCustomBlocks
             mesh.triangles = new int[] { 0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7 };
             mesh.uv = this.uvs;
 
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+            mesh.RecalculateBounds();
+
             // Make the mesh non-readable so it stops taking up extra memory.
             mesh.UploadMeshData(true);
 

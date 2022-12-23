@@ -2,7 +2,9 @@
     "slug": "customflags",
     "ignoreFiles": [
         "CustomBlocks.csproj",
-        "CustomBlocks.csproj.user"
+        "CustomBlocks.csproj.user",
+        "CustomBlocks.sln",
+        "CHANGELOG.md"
     ],
     "ignoreFolders": [
         ".vs",
