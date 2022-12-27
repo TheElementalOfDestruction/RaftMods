@@ -1,3 +1,6 @@
 {
-    "slug": "configmachines"
+    "slug": "configmachines",
+    "ignoreFiles": [
+        "CHANGELOG.md"
+    ]
 }

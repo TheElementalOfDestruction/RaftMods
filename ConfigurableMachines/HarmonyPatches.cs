@@ -68,10 +68,19 @@ public class Patch_RecipePortions
                 mult = ConfigMachines.ExtraSettingsAPI_Settings.GetFloatInput("juicerPortionsMult");
                 break;
         }
-        ConfigMachines.DebugLog(mult);
-        ConfigMachines.DebugLog(__result * mult);
+
+        if (ConfigMachines.debugging)
+        {
+            ConfigMachines.DebugLog(mult);
+            ConfigMachines.DebugLog(__result * mult);
+        }
 
         __result = (uint)(__result * mult);
+        // Ensure we don't have 0 (or negative) portions.
+        if (__result <= 0)
+        {
+            __result = 1;
+        }
     }
 }
 
