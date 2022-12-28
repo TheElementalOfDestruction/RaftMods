@@ -1,3 +1,7 @@
+**v0.4.2**
+* Refactored internal files.
+* Fixed new bug introduced in last version that prevented mod load.
+
 **v0.4.1**
 * Fix bug that could cause the number of portions in a cooking pot/juicer recipe to be 0, the most likely cause of an error that would completely break the machines requiring them to be picked up and placed back down to fix.
 
