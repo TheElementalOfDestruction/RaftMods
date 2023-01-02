@@ -1,6 +1,6 @@
 **v3.2.0**
 * *Finally* fixed the issue causing sails and flags to not flap around as they should.
-* *Finally* Fixed the issue causing posters to look really messed up.
+* *Finally* fixed the issue causing posters to look really messed up.
 * Improved some code execution time and memory usage by caching mipmap enabled versions of the default materials.
 * Changed shader for some blocks to fix visual bugs.
 
