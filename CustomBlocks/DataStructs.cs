@@ -182,11 +182,11 @@ namespace DestinyCustomBlocks
 
         public Material CreateMaterial()
         {
-            Material ret = new Material(CustomBlocks.shader);
+            Material ret = new Material(CustomBlocks.standardShader);
             Texture2D temp = new Texture2D(this.widthPixels, this.heightPixels);
-            ret.SetTexture("_Diffuse", temp);
-            ret.SetTexture("_MetallicRPaintMaskGSmoothnessA", temp);
-            ret.SetTexture("_Normal", temp);
+            ret.SetTexture("_BumpMap", temp);
+            ret.SetTexture("_MainTex", temp);
+            ret.SetTexture("_MetallicGlossMap", temp);
 
             return ret;
         }

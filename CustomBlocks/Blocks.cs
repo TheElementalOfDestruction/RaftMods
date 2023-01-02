@@ -155,16 +155,20 @@ namespace DestinyCustomBlocks
                     {
                         return false;
                     }
+                    // Create the mipmap enabled version.
+                    this.autoResolutionMat = mat.CreateMipMapEnabled(this.CustomBlockType);
                 }
                 else
                 {
                     // If we are here, use the default flag material.
                     mat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+                    // Get the mipmap enabled version.
+                    this.autoResolutionMat = CustomBlocks.instance.defaultMaterialsMipEnabled[this.CustomBlockType];
                 }
 
                 // Setup the automatic resolution version and determine which to
+                // use.
                 this.fullResolutionMat = mat;
-                this.autoResolutionMat = mat.CreateMipMapEnabled();
                 if (CustomBlocks.UseMipMaps)
                 {
                     mat = this.autoResolutionMat;
@@ -360,17 +364,20 @@ namespace DestinyCustomBlocks
                 {
                     return false;
                 }
+                // Create the mipmap enabled version.
+                this.autoResolutionMat = mat.CreateMipMapEnabled(this.CustomBlockType);
             }
             else
             {
                 // If we are here, use the default flag material.
                 mat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+                // Get the mipmap enabled version.
+                this.autoResolutionMat = CustomBlocks.instance.defaultMaterialsMipEnabled[this.CustomBlockType];
             }
 
             // Setup the automatic resolution version and determine which to
             // use.
             this.fullResolutionMat = mat;
-            this.autoResolutionMat = mat.CreateMipMapEnabled();
             if (CustomBlocks.UseMipMaps)
             {
                 mat = this.autoResolutionMat;
@@ -568,17 +575,20 @@ namespace DestinyCustomBlocks
                 {
                     return false;
                 }
+                // Create the mipmap enabled version.
+                this.autoResolutionMat = mat.CreateMipMapEnabled(this.CustomBlockType);
             }
             else
             {
                 // If we are here, use the default flag material.
                 mat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+                // Get the mipmap enabled version.
+                this.autoResolutionMat = CustomBlocks.instance.defaultMaterialsMipEnabled[this.CustomBlockType];
             }
 
             // Setup the automatic resolution version and determine which to
             // use.
             this.fullResolutionMat = mat;
-            this.autoResolutionMat = mat.CreateMipMapEnabled();
             if (CustomBlocks.UseMipMaps)
             {
                 mat = this.autoResolutionMat;

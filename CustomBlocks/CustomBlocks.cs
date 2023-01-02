@@ -36,6 +36,7 @@ namespace DestinyCustomBlocks
             { BlockType.POSTER_V_3_5, (352, 25942) },
             { BlockType.POSTER_1_1, (352, 25943) },
         };
+
         private static readonly Dictionary<BlockType, string> FOLDER_NAMES = new Dictionary<BlockType, string>()
         {
             // In little endian this would represent the string "De";
@@ -84,6 +85,7 @@ namespace DestinyCustomBlocks
             { BlockType.POSTER_V_1_2, (-2, -2) },
             { BlockType.POSTER_1_1, (-2, -2) },
         };
+
         public static readonly Dictionary<BlockType, (int, int)> SIZES = new Dictionary<BlockType, (int, int)>()
         {
             { BlockType.NONE, (0, 0) },
@@ -107,6 +109,7 @@ namespace DestinyCustomBlocks
             { BlockType.POSTER_V_1_2, (540, 1080) },
             { BlockType.POSTER_1_1, (540, 540) },
         };
+
         // Dictionary to tell what axis to mirror images on. Result is a tuple
         // of whether to mirror the x and whether to mirror the y.
         public static readonly Dictionary<BlockType, (bool, bool)> MIRROR = new Dictionary<BlockType, (bool, bool)>()
@@ -274,11 +277,140 @@ namespace DestinyCustomBlocks
             { BlockType.POSTER_1_1, true },
         };
 
+        // Holds additional float data to attach to the materials.
+        public static readonly Dictionary<BlockType, (string, float)[]> ADDITIONAL_PROPERTIES = new Dictionary<BlockType, (string, float)[]>()
+        {
+            { BlockType.NONE, new (string, float)[]{} },
+            { BlockType.BED, new (string, float)[]{} },
+            { BlockType.CURTAIN_H, new (string, float)[]{} },
+            { BlockType.CURTAIN_V, new (string, float)[]{} },
+            {
+                BlockType.FLAG, new (string, float)[]
+                {
+                    ("_GreenChannelMultiply", 0.046f),
+                    ("_Waves", 3.3f),
+                    ("_WindSpeed", 0.425f)
+                }
+            },
+            {
+                BlockType.RUG_BIG, new (string, float)[]
+                {
+                    ("_Glossiness", 0.05f),
+                }
+            },
+            {
+                BlockType.RUG_SMALL, new (string, float)[]
+                {
+                    ("_Glossiness", 0.05f),
+                }
+            },
+            {
+                BlockType.SAIL, new (string, float)[]
+                {
+                    ("_RedChannelMultiply", 0.027f),
+                    ("_Waves", 3.69f),
+                    ("_WindSpeed", 0.801f)
+                }
+            },
+
+            {
+                BlockType.POSTER_H_16_9, new (string, float)[]
+                {
+                    ("_Glossiness", 0.05f),
+                }
+            },
+            {
+                BlockType.POSTER_V_9_16, new (string, float)[]
+                {
+                    ("_Glossiness", 0.05f),
+                }
+            },
+            {
+                BlockType.POSTER_H_5_3, new (string, float)[]
+                {
+                    ("_Glossiness", 0.05f),
+                }
+            },
+            {
+                BlockType.POSTER_V_3_5, new (string, float)[]
+                {
+                    ("_Glossiness", 0.05f),
+                }
+            },
+            {
+                BlockType.POSTER_H_4_3, new (string, float)[]
+                {
+                    ("_Glossiness", 0.05f),
+                }
+            },
+            {
+                BlockType.POSTER_V_3_4, new (string, float)[]
+                {
+                    ("_Glossiness", 0.05f),
+                }
+            },
+            {
+                BlockType.POSTER_H_3_2, new (string, float)[]
+                {
+                    ("_Glossiness", 0.05f),
+                }
+            },
+            {
+                BlockType.POSTER_V_2_3, new (string, float)[]
+                {
+                    ("_Glossiness", 0.05f),
+                }
+            },
+            {
+                BlockType.POSTER_H_2_1, new (string, float)[]
+                {
+                    ("_Glossiness", 0.05f),
+                }
+            },
+            {
+                BlockType.POSTER_V_1_2, new (string, float)[]
+                {
+                    ("_Glossiness", 0.05f),
+                }
+            },
+            {
+                BlockType.POSTER_1_1, new (string, float)[]
+                {
+                    ("_Glossiness", 0.05f),
+                }
+            },
+        };
+
+        // Tells whether the normal map should be replaced for a block type.
+        public static readonly Dictionary<BlockType, ShaderType> SHADER_TYPE = new Dictionary<BlockType, ShaderType>()
+        {
+            { BlockType.NONE, ShaderType.PAINT },
+            { BlockType.BED, ShaderType.PAINT },
+            { BlockType.CURTAIN_H, ShaderType.PAINT },
+            { BlockType.CURTAIN_V, ShaderType.PAINT },
+            { BlockType.FLAG, ShaderType.PAINT },
+            { BlockType.RUG_BIG, ShaderType.STANDARD },
+            { BlockType.RUG_SMALL, ShaderType.STANDARD },
+            { BlockType.SAIL, ShaderType.PAINT },
+            { BlockType.POSTER_H_16_9, ShaderType.STANDARD },
+            { BlockType.POSTER_V_9_16, ShaderType.STANDARD },
+            { BlockType.POSTER_H_5_3, ShaderType.STANDARD },
+            { BlockType.POSTER_V_3_5, ShaderType.STANDARD },
+            { BlockType.POSTER_H_4_3, ShaderType.STANDARD },
+            { BlockType.POSTER_V_3_4, ShaderType.STANDARD },
+            { BlockType.POSTER_H_3_2, ShaderType.STANDARD },
+            { BlockType.POSTER_V_2_3, ShaderType.STANDARD },
+            { BlockType.POSTER_H_2_1, ShaderType.STANDARD },
+            { BlockType.POSTER_V_1_2, ShaderType.STANDARD },
+            { BlockType.POSTER_1_1, ShaderType.STANDARD },
+        };
+
         public static Dictionary<int, BlockType> ID_TO_BLOCKTYPE = new Dictionary<int, BlockType>();
 
         public static CustomBlocks instance;
         public static JsonModInfo modInfo;
         public static Shader shader;
+        public static Shader standardShader;
         public static Camera iconRenderer;
 
         private static GameObject menu;
@@ -293,6 +425,7 @@ namespace DestinyCustomBlocks
         public Dictionary<BlockType, Texture2D> basePaints;
         // Dictionary for the default materials.
         public Dictionary<BlockType, Material> defaultMaterials;
+        public Dictionary<BlockType, Material> defaultMaterialsMipEnabled;
         // Dictionary for the default sprites.
         public Dictionary<BlockType, Sprite> defaultSprites;
 
@@ -353,6 +486,7 @@ namespace DestinyCustomBlocks
             this.baseNormals = new Dictionary<BlockType, Texture2D>();
             this.basePaints = new Dictionary<BlockType, Texture2D>();
             this.defaultMaterials = new Dictionary<BlockType, Material>();
+            this.defaultMaterialsMipEnabled = new Dictionary<BlockType, Material>();
             this.defaultSprites = new Dictionary<BlockType, Sprite>();
             this.notification = HNotify.instance.AddNotification(HNotify.NotificationType.spinning, "Loading CustomBlocks...");
 
@@ -420,6 +554,7 @@ namespace DestinyCustomBlocks
             {
                 // First thing is first, let's fetch our shader from the game.
                 CustomBlocks.shader = Shader.Find(" BlockPaint");
+                CustomBlocks.standardShader = Shader.Find("Standard");
 
                 // Second, setup most of the materials using the basic methods.
                 this.SetupBasicBlockData(BlockType.BED);
@@ -429,7 +564,6 @@ namespace DestinyCustomBlocks
                 this.SetupBasicBlockData(BlockType.RUG_BIG);
                 this.SetupBasicBlockData(BlockType.RUG_SMALL);
                 this.SetupBasicBlockData(BlockType.SAIL);
-
             }
             catch (Exception e)
             {
@@ -475,6 +609,7 @@ namespace DestinyCustomBlocks
             }
             catch (Exception e)
             {
+                CustomBlocks.Log(72);
                 Debug.LogError(e);
                 this.notification?.Close();
                 yield break;
@@ -512,7 +647,7 @@ namespace DestinyCustomBlocks
             CustomBlocks.Log("Mod has been unloaded.");
         }
 
-        public static void Log(object message)
+        public static new void Log(object message)
         {
             Debug.Log($"[{modInfo.name}]: {message}");
         }
@@ -537,11 +672,35 @@ namespace DestinyCustomBlocks
             this.AddBaseTextures(bt, this.GetOriginalMaterial(IDS[bt].Item1), $"{imgDir}/default.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
 
             // Setup the base material.
-            Material mat = new Material(CustomBlocks.shader);
-            mat.SetTexture("_Diffuse", this.baseTextures[bt]);
-            mat.SetTexture("_MetallicRPaintMaskGSmoothnessA", this.basePaints[bt]);
-            mat.SetTexture("_Normal", this.baseNormals[bt]);
+
+            Material mat = null;
+            switch (CustomBlocks.SHADER_TYPE[bt])
+            {
+                case ShaderType.PAINT:
+                    mat = new Material(CustomBlocks.shader);
+                    mat.SetTexture("_Diffuse", this.baseTextures[bt]);
+                    mat.SetTexture("_MetallicRPaintMaskGSmoothnessA", this.basePaints[bt]);
+                    mat.SetTexture("_Normal", this.baseNormals[bt]);
+                    break;
+                case ShaderType.STANDARD:
+                    mat = new Material(CustomBlocks.standardShader);
+                    mat.SetTexture("_MainTex", this.baseTextures[bt]);
+                    mat.SetTexture("_MetallicGlossMap", this.basePaints[bt]);
+                    mat.SetTexture("_BumpMap", this.baseNormals[bt]);
+                    break;
+                default:
+                    throw new Exception($"Unknown shader type for block type {bt}.");
+            }
+
+
+            // Get the additional data for our material and set it.
+            foreach ((string, float) data in CustomBlocks.ADDITIONAL_PROPERTIES[bt])
+            {
+                mat.SetFloat(data.Item1, data.Item2);
+            }
+
             this.defaultMaterials[bt] = mat;
+            this.defaultMaterialsMipEnabled[bt] = mat.CreateMipMapEnabled(bt);
 
             var def = GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt);
             this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(def, bt);
@@ -585,7 +744,9 @@ namespace DestinyCustomBlocks
                 try
                 {
                     var def = GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt);
-                    this.defaultMaterials[bt] = CustomBlocks.CreateMaterialFromImageData(def, bt);
+                    Material mat = CustomBlocks.CreateMaterialFromImageData(def, bt);
+                    this.defaultMaterials[bt] = mat;
+                    this.defaultMaterialsMipEnabled[bt] = mat.CreateMipMapEnabled(bt);
                     this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(def, bt);
                 }
                 catch (Exception e)
@@ -636,14 +797,14 @@ namespace DestinyCustomBlocks
             Texture2D[] add = new Texture2D[3];
 
             // Get the diffuse portion of the texture.
-            add[0] = (originalMat.GetTexture("_Diffuse") as Texture2D).CreateReadable();
+            add[0] = originalMat.GetMainTexture().CreateReadable();
             ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(texture));
             CustomBlocks.PlaceImageInTexture(add[0], insertTex, bt);
 
             // Now we need to generate our normal map.
             if (OVERRIDE_NORMAL[bt])
             {
-                add[1] = (originalMat.GetTexture("_Normal") as Texture2D).CreateReadable();
+                add[1] = originalMat.GetNormalTexture().CreateReadable();
                 ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(normal));
                 CustomBlocks.PlaceImageInTexture(add[1], insertTex, bt, true);
             }
@@ -651,12 +812,12 @@ namespace DestinyCustomBlocks
             {
                 // If we are not overriding the normal, copy it without the
                 // mipmaps and immediately make it unreadable.
-                add[1] = (originalMat.GetTexture("_Normal") as Texture2D).CreateReadable();
+                add[1] = originalMat.GetNormalTexture().CreateReadable();
                 add[1].Apply(true, true);
             }
 
             // Now we need to generate our paint map.
-            add[2] = (originalMat.GetTexture("_MetallicRPaintMaskGSmoothnessA") as Texture2D).CreateReadable();
+            add[2] = originalMat.GetPaintTexture().CreateReadable();
             ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(paint));
             CustomBlocks.PlaceImageInTexture(add[2], insertTex, bt, true);
 
@@ -735,11 +896,30 @@ namespace DestinyCustomBlocks
             Graphics.CopyTexture(this.baseNormals[bt], normal);
             Graphics.CopyTexture(this.basePaints[bt], paint);
 
-            // Create and setup our material.
-            Material mat = new Material(CustomBlocks.shader);
-            mat.SetTexture("_Diffuse", diffuse);
-            mat.SetTexture("_MetallicRPaintMaskGSmoothnessA", paint);
-            mat.SetTexture("_Normal", normal);
+            Material mat = null;
+            switch (CustomBlocks.SHADER_TYPE[bt])
+            {
+                case ShaderType.PAINT:
+                    mat = new Material(CustomBlocks.shader);
+                    mat.SetTexture("_Diffuse", diffuse);
+                    mat.SetTexture("_MetallicRPaintMaskGSmoothnessA", paint);
+                    mat.SetTexture("_Normal", normal);
+                    break;
+                case ShaderType.STANDARD:
+                    mat = new Material(CustomBlocks.standardShader);
+                    mat.SetTexture("_MainTex", diffuse);
+                    mat.SetTexture("_MetallicGlossMap", paint);
+                    mat.SetTexture("_BumpMap", normal);
+                    break;
+                default:
+                    throw new Exception($"Unknown shader type for block type {bt}.");
+            }
+
+            // Get the additional data for our material and set it.
+            foreach ((string, float) data in CustomBlocks.ADDITIONAL_PROPERTIES[bt])
+            {
+                mat.SetFloat(data.Item1, data.Item2);
+            }
 
             return mat;
         }
@@ -1337,7 +1517,7 @@ namespace DestinyCustomBlocks
          */
         private static void PlaceImageInMaterial(Material dest, Texture2D src, BlockType bt, bool makeUnreadable = false)
         {
-            CustomBlocks.PlaceImageInTexture(dest.GetTexture("_Diffuse") as Texture2D, src, bt, makeUnreadable);
+            CustomBlocks.PlaceImageInTexture(dest.GetMainTexture(), src, bt, makeUnreadable);
         }
 
         /*

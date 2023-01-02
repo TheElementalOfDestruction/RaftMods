@@ -22,22 +22,29 @@ namespace DestinyCustomBlocks
 
     static class MaterialExtension
     {
-        public static readonly string[] ShaderPropNames = new String[]
+        public static readonly string[] ShaderPropNames = new string[]
         {
             "_Diffuse",
             "_MetallicRPaintMaskGSmoothnessA",
             "_Normal"
         };
 
+        public static readonly string[] StandardShaderPropNames = new string[]
+        {
+            "_BumpMap",
+            "_MainTex",
+            "_MetallicGlossMap"
+        };
+
         /*
          * Takes a material without mip maps and creates one with mip maps.
          */
-        public static Material CreateMipMapEnabled(this Material mat)
+        public static Material CreateMipMapEnabled(this Material mat, BlockType bt)
         {
             Material newMat = new Material(mat.shader);
 
             // Iterate the list of known shader properties to copy.
-            foreach (string prop in ShaderPropNames)
+            foreach (string prop in (mat.shader == CustomBlocks.shader ? ShaderPropNames : StandardShaderPropNames))
             {
                 // Get the original texture and create a new texture with mip
                 // maps enabled.
@@ -49,6 +56,12 @@ namespace DestinyCustomBlocks
                 newMat.SetTexture(prop, newTex);
             }
 
+            // Get the additional data for our material and set it.
+            foreach ((string, float) data in CustomBlocks.ADDITIONAL_PROPERTIES[bt])
+            {
+                mat.SetFloat(data.Item1, data.Item2);
+            }
+
             return newMat;
         }
 
@@ -56,10 +69,71 @@ namespace DestinyCustomBlocks
         {
             if (mat != null)
             {
-                UnityEngine.Object.DestroyImmediate(mat.GetTexture("_Diffuse"));
-                UnityEngine.Object.DestroyImmediate(mat.GetTexture("_MetallicRPaintMaskGSmoothnessA"));
-                UnityEngine.Object.DestroyImmediate(mat.GetTexture("_Normal"));
+                if (mat.shader == CustomBlocks.shader)
+                {
+                    UnityEngine.Object.DestroyImmediate(mat.GetTexture("_Diffuse"));
+                    UnityEngine.Object.DestroyImmediate(mat.GetTexture("_MetallicRPaintMaskGSmoothnessA"));
+                    UnityEngine.Object.DestroyImmediate(mat.GetTexture("_Normal"));
+                }
+                else if (mat.shader == CustomBlocks.standardShader)
+                {
+                    UnityEngine.Object.DestroyImmediate(mat.GetTexture("_MainTex"));
+                    UnityEngine.Object.DestroyImmediate(mat.GetTexture("_BumpMap"));
+                    UnityEngine.Object.DestroyImmediate(mat.GetTexture("_MetallicGlossMap"));
+                }
+                else
+                {
+
+                }
                 UnityEngine.Object.DestroyImmediate(mat);
+            }
+        }
+
+        public static Texture2D GetMainTexture(this Material mat)
+        {
+            if (mat.shader == CustomBlocks.shader)
+            {
+                return mat.GetTexture("_Diffuse") as Texture2D;
+            }
+            else if (mat.shader == CustomBlocks.standardShader)
+            {
+                return mat.GetTexture("_MainTex") as Texture2D;
+            }
+            else
+            {
+                throw new Exception("Unknown shader on material.");
+            }
+        }
+
+        public static Texture2D GetNormalTexture(this Material mat)
+        {
+            if (mat.shader == CustomBlocks.shader)
+            {
+                return mat.GetTexture("_Normal") as Texture2D;
+            }
+            else if (mat.shader == CustomBlocks.standardShader)
+            {
+                return mat.GetTexture("_BumpMap") as Texture2D;
+            }
+            else
+            {
+                throw new Exception("Unknown shader on material.");
+            }
+        }
+
+        public static Texture2D GetPaintTexture(this Material mat)
+        {
+            if (mat.shader == CustomBlocks.shader)
+            {
+                return mat.GetTexture("_MetallicRPaintMaskGSmoothnessA") as Texture2D;
+            }
+            else if (mat.shader == CustomBlocks.standardShader)
+            {
+                return mat.GetTexture("_MetallicGlossMap") as Texture2D;
+            }
+            else
+            {
+                throw new Exception("Unknown shader on material.");
             }
         }
     }

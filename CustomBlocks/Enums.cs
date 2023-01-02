@@ -35,4 +35,12 @@
         NONE, // No rotation.
         RIGHT, // Rotate 180 degrees.
     }
+
+
+
+    public enum ShaderType
+    {
+        PAINT,
+        STANDARD,
+    }
 }
