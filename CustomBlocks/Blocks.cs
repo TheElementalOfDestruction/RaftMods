@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 
 
@@ -17,6 +18,12 @@ namespace DestinyCustomBlocks
          * texture.
          */
         void SetImageData(byte[] data);
+
+        /*
+         * Coroutine for setting image data. Typically used only for block
+         * creation.
+         */
+        IEnumerator SetImageDataCo(byte[] data);
 
         /*
          * Retrieves the member of the BlockType enum that identifies this
@@ -53,6 +60,32 @@ namespace DestinyCustomBlocks
             this.ImageData = data;
         }
 
+        public IEnumerator SetImageDataCo(byte[] data)
+        {
+            object lockObj = null;
+            if (this.coLock)
+            {
+                yield return this.coLock.Lock(x => lockObj = x);
+            }
+            // Backup our data incase the patch function fails.
+            byte[] oldData = this.imageData;
+            this.imageData = data;
+            bool success = false;
+
+            yield return this.PatchRenderer(x => success = x);
+
+            // If we fail, reset the image data back to it's previous state.
+            if (!success)
+            {
+                this.imageData = oldData;
+            }
+
+            if (lockObj != null)
+            {
+                this.coLock.Unlock(lockObj);
+            }
+        }
+
         BlockType ICustomBlock.GetBlockType()
         {
             return this.CustomBlockType;
@@ -77,11 +110,16 @@ namespace DestinyCustomBlocks
 
         private static readonly int[] rendererIndicies = { 0 };
 
+        [SerializeField]
         protected byte[] imageData;
+        [SerializeField]
         protected bool rendererPatched = false;
         protected bool showingText;
+        [SerializeField]
         protected Material fullResolutionMat;
+        [SerializeField]
         protected Material autoResolutionMat;
+        protected CoroutineLock coLock;
 
         public bool sendUpdates = true;
 
@@ -103,22 +141,27 @@ namespace DestinyCustomBlocks
             }
             set
             {
-                // Backup our data incase the patch function fails.
-                byte[] oldData = this.imageData;
-                this.imageData = value;
-                if (!this.PatchRenderer())
+                if (this.imageData?.Length == 0 && value?.Length == 0)
                 {
-                    this.imageData = oldData;
+                    return;
                 }
+                StartCoroutine(this.SetImageDataCo(value));
             }
         }
 
         protected override void Start()
         {
             base.Start();
+            this.coLock = new CoroutineLock();
             if (!this.rendererPatched)
             {
-                this.ImageData = new byte[0];
+                this.rendererPatched = true;
+                this.imageData = new byte[0];
+                if (!RAPI.IsDedicatedServer())
+                {
+                    this.autoResolutionMat = CustomBlocks.instance.defaultMaterialsMipEnabled[this.CustomBlockType];
+                    this.fullResolutionMat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+                }
             }
         }
 
@@ -126,16 +169,17 @@ namespace DestinyCustomBlocks
          * Attempt to load the new data into the renderer(s), returning whether
          * it succeeded.
          */
-        protected virtual bool PatchRenderer()
+        protected virtual IEnumerator PatchRenderer(Action<bool> callback)
         {
             // A null value is completely invalid.
-            try
+            if (this.imageData == null)
             {
-                if (this.imageData == null)
-                {
-                    return false;
-                }
+                callback(false);
+                yield break;
+            }
 
+            if(!RAPI.IsDedicatedServer())
+            {
                 // Make sure the OccupyingComponent is good.
                 if (!this.occupyingComponent)
                 {
@@ -143,18 +187,21 @@ namespace DestinyCustomBlocks
                     this.occupyingComponent.FindRenderers();
                 }
 
+
                 // Setup our new materials and figure out which to use.
-                Material mat;
+                Material mat = null;
 
                 if (this.imageData.Length != 0)
                 {
                     // Create a new material from our data.
-                    mat = CustomBlocks.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
+                    yield return CustomBlocks.CreateMaterialFromImageData(this.imageData, this.CustomBlockType, x => mat = x);
                     // If the creation fails, return false to signify.
                     if (!mat)
                     {
-                        return false;
+                        callback(false);
+                        yield break;
                     }
+
                     // Create the mipmap enabled version.
                     this.autoResolutionMat = mat.CreateMipMapEnabled(this.CustomBlockType);
                 }
@@ -179,22 +226,35 @@ namespace DestinyCustomBlocks
                 {
                     this.occupyingComponent.renderers[i].material = mat;
                 }
-
-                this.rendererPatched = true;
-                if (this.sendUpdates)
-                {
-                    this.GetComponent<ICustomBlockNetwork>()?.BroadcastChange(this.imageData);
-                }
-
-                Resources.UnloadUnusedAssets();
-
-                return true;
             }
-            catch (Exception e)
+            else
             {
-                Debug.LogError(e);
-                throw e;
+                if (this.imageData.Length != 0)
+                {
+                    var size = CustomBlocks.SIZES[this.CustomBlockType].Item1;
+                    size *= CustomBlocks.SIZES[this.CustomBlockType].Item2 * 4;
+                    if (this.imageData.Length != size)
+                    {
+                        callback(false);
+                        yield break;
+                    }
+                }
             }
+            this.rendererPatched = true;
+            if (this.hasBeenPlaced && this.sendUpdates)
+            {
+                this.GetComponent<ICustomBlockNetwork>()?.BroadcastChange(this.imageData);
+            }
+
+            if (!Raft_Network.IsHost && this.imageData.Length > 0)
+            {
+                // If we are not the host, set the image data to a single byte,
+                // But *only* if it is not an empty array already. This tells
+                // the code that it has image data without actually storing any.
+                this.imageData = new byte[1];
+            }
+
+            callback(true);
         }
 
         public override RGD Serialize_Save()
@@ -264,6 +324,32 @@ namespace DestinyCustomBlocks
             this.ImageData = data;
         }
 
+        public IEnumerator SetImageDataCo(byte[] data)
+        {
+            object lockObj = null;
+            if (this.coLock)
+            {
+                yield return this.coLock.Lock(x => lockObj = x);
+            }
+            // Backup our data incase the patch function fails.
+            byte[] oldData = this.imageData;
+            this.imageData = data;
+            bool success = false;
+
+            yield return this.PatchRenderer(x => success = x);
+
+            // If we fail, reset the image data back to it's previous state.
+            if (!success)
+            {
+                this.imageData = oldData;
+            }
+
+            if (lockObj != null)
+            {
+                this.coLock.Unlock(lockObj);
+            }
+        }
+
         BlockType ICustomBlock.GetBlockType()
         {
             return this.CustomBlockType;
@@ -288,11 +374,16 @@ namespace DestinyCustomBlocks
 
         private static readonly int[] rendererIndicies = { 0 };
 
+        [SerializeField]
         protected byte[] imageData;
+        [SerializeField]
         protected bool rendererPatched = false;
         protected bool showingText;
+        [SerializeField]
         protected Material fullResolutionMat;
+        [SerializeField]
         protected Material autoResolutionMat;
+        protected CoroutineLock coLock;
 
         public bool sendUpdates = true;
 
@@ -314,22 +405,27 @@ namespace DestinyCustomBlocks
             }
             set
             {
-                // Backup our data incase the patch function fails.
-                byte[] oldData = this.imageData;
-                this.imageData = value;
-                if (!this.PatchRenderer())
+                if (this.imageData?.Length == 0 && value?.Length == 0)
                 {
-                    this.imageData = oldData;
+                    return;
                 }
+                StartCoroutine(this.SetImageDataCo(value));
             }
         }
 
         protected override void Start()
         {
             base.Start();
+            this.coLock = new CoroutineLock();
             if (!this.rendererPatched)
             {
-                this.ImageData = new byte[0];
+                this.rendererPatched = true;
+                this.imageData = new byte[0];
+                if(!RAPI.IsDedicatedServer())
+                {
+                    this.autoResolutionMat = CustomBlocks.instance.defaultMaterialsMipEnabled[this.CustomBlockType];
+                    this.fullResolutionMat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+                }
             }
         }
 
@@ -337,67 +433,92 @@ namespace DestinyCustomBlocks
          * Attempt to load the new data into the renderer(s), returning whether
          * it succeeded.
          */
-        protected virtual bool PatchRenderer()
+        protected virtual IEnumerator PatchRenderer(Action<bool> callback)
         {
             // A null value is completely invalid.
             if (this.imageData == null)
             {
-                return false;
+                callback(false);
+                yield break;
             }
 
-            // Make sure the OccupyingComponent is good.
-            if (!this.occupyingComponent)
+            if(!RAPI.IsDedicatedServer())
             {
-                this.occupyingComponent = this.GetComponent<OccupyingComponent>();
-                this.occupyingComponent.FindRenderers();
-            }
-
-            // Setup our new materials and figure out which to use.
-            Material mat;
-
-            if (this.imageData.Length != 0)
-            {
-                // Create a new material from our data.
-                mat = CustomBlocks.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
-                // If the creation fails, return false to signify.
-                if (!mat)
+                // Make sure the OccupyingComponent is good.
+                if (!this.occupyingComponent)
                 {
-                    return false;
+                    this.occupyingComponent = this.GetComponent<OccupyingComponent>();
+                    this.occupyingComponent.FindRenderers();
                 }
-                // Create the mipmap enabled version.
-                this.autoResolutionMat = mat.CreateMipMapEnabled(this.CustomBlockType);
+
+
+                // Setup our new materials and figure out which to use.
+                Material mat = null;
+
+                if (this.imageData.Length != 0)
+                {
+                    // Create a new material from our data.
+                    yield return CustomBlocks.CreateMaterialFromImageData(this.imageData, this.CustomBlockType, x => mat = x);
+                    // If the creation fails, return false to signify.
+                    if (!mat)
+                    {
+                        callback(false);
+                        yield break;
+                    }
+
+                    // Create the mipmap enabled version.
+                    this.autoResolutionMat = mat.CreateMipMapEnabled(this.CustomBlockType);
+                }
+                else
+                {
+                    // If we are here, use the default flag material.
+                    mat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+                    // Get the mipmap enabled version.
+                    this.autoResolutionMat = CustomBlocks.instance.defaultMaterialsMipEnabled[this.CustomBlockType];
+                }
+
+                // Setup the automatic resolution version and determine which to
+                // use.
+                this.fullResolutionMat = mat;
+                if (CustomBlocks.UseMipMaps)
+                {
+                    mat = this.autoResolutionMat;
+                }
+
+                // Replace the material(s).
+                foreach(int i in this.RendererIndicies)
+                {
+                    this.occupyingComponent.renderers[i].material = mat;
+                }
             }
             else
             {
-                // If we are here, use the default flag material.
-                mat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
-                // Get the mipmap enabled version.
-                this.autoResolutionMat = CustomBlocks.instance.defaultMaterialsMipEnabled[this.CustomBlockType];
+                if (this.imageData.Length != 0)
+                {
+                    var size = CustomBlocks.SIZES[this.CustomBlockType].Item1;
+                    size *= CustomBlocks.SIZES[this.CustomBlockType].Item2 * 4;
+                    if (this.imageData.Length != size)
+                    {
+                        callback(false);
+                        yield break;
+                    }
+                }
             }
-
-            // Setup the automatic resolution version and determine which to
-            // use.
-            this.fullResolutionMat = mat;
-            if (CustomBlocks.UseMipMaps)
-            {
-                mat = this.autoResolutionMat;
-            }
-
-            // Replace the material(s).
-            foreach(int i in this.RendererIndicies)
-            {
-                this.occupyingComponent.renderers[i].material = mat;
-            }
-
             this.rendererPatched = true;
-            if (this.sendUpdates)
+            if (this.hasBeenPlaced && this.sendUpdates)
             {
                 this.GetComponent<ICustomBlockNetwork>()?.BroadcastChange(this.imageData);
             }
 
-            Resources.UnloadUnusedAssets();
+            if (!Raft_Network.IsHost && this.imageData.Length > 0)
+            {
+                // If we are not the host, set the image data to a single byte,
+                // But *only* if it is not an empty array already. This tells
+                // the code that it has image data without actually storing any.
+                this.imageData = new byte[1];
+            }
 
-            return true;
+            callback(true);
         }
 
         public override RGD Serialize_Save()
@@ -469,6 +590,32 @@ namespace DestinyCustomBlocks
             this.ImageData = data;
         }
 
+        public IEnumerator SetImageDataCo(byte[] data)
+        {
+            object lockObj = null;
+            if (this.coLock)
+            {
+                yield return this.coLock.Lock(x => lockObj = x);
+            }
+            // Backup our data incase the patch function fails.
+            byte[] oldData = this.imageData;
+            this.imageData = data;
+            bool success = false;
+
+            yield return this.PatchRenderer(x => success = x);
+
+            // If we fail, reset the image data back to it's previous state.
+            if (!success)
+            {
+                this.imageData = oldData;
+            }
+
+            if (lockObj != null)
+            {
+                this.coLock.Unlock(lockObj);
+            }
+        }
+
         BlockType ICustomBlock.GetBlockType()
         {
             return this.CustomBlockType;
@@ -493,11 +640,16 @@ namespace DestinyCustomBlocks
 
         private static readonly int[] rendererIndicies = { 1, 2 };
 
+        [SerializeField]
         protected byte[] imageData;
+        [SerializeField]
         protected bool rendererPatched = false;
         protected bool showingText;
+        [SerializeField]
         protected Material fullResolutionMat;
+        [SerializeField]
         protected Material autoResolutionMat;
+        protected CoroutineLock coLock;
 
         public bool sendUpdates = true;
 
@@ -525,22 +677,27 @@ namespace DestinyCustomBlocks
             }
             set
             {
-                // Backup our data incase the patch function fails.
-                byte[] oldData = this.imageData;
-                this.imageData = value;
-                if (!this.PatchRenderer())
+                if (this.imageData?.Length == 0 && value?.Length == 0)
                 {
-                    this.imageData = oldData;
+                    return;
                 }
+                StartCoroutine(this.SetImageDataCo(value));
             }
         }
 
         protected override void Start()
         {
             base.Start();
+            this.coLock = new CoroutineLock();
             if (!this.rendererPatched)
             {
-                this.ImageData = new byte[0];
+                this.rendererPatched = true;
+                this.imageData = new byte[0];
+                if(!RAPI.IsDedicatedServer())
+                {
+                    this.autoResolutionMat = CustomBlocks.instance.defaultMaterialsMipEnabled[this.CustomBlockType];
+                    this.fullResolutionMat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+                }
             }
         }
 
@@ -548,67 +705,92 @@ namespace DestinyCustomBlocks
          * Attempt to load the new data into the renderer(s), returning whether
          * it succeeded.
          */
-        protected virtual bool PatchRenderer()
+        protected virtual IEnumerator PatchRenderer(Action<bool> callback)
         {
             // A null value is completely invalid.
             if (this.imageData == null)
             {
-                return false;
+                callback(false);
+                yield break;
             }
 
-            // Make sure the OccupyingComponent is good.
-            if (!this.occupyingComponent)
+            if(!RAPI.IsDedicatedServer())
             {
-                this.occupyingComponent = this.GetComponent<OccupyingComponent>();
-                this.occupyingComponent.FindRenderers();
-            }
-
-            // Setup our new materials and figure out which to use.
-            Material mat;
-
-            if (this.imageData.Length != 0)
-            {
-                // Create a new material from our data.
-                mat = CustomBlocks.CreateMaterialFromImageData(this.imageData, this.CustomBlockType);
-                // If the creation fails, return false to signify.
-                if (!mat)
+                // Make sure the OccupyingComponent is good.
+                if (!this.occupyingComponent)
                 {
-                    return false;
+                    this.occupyingComponent = this.GetComponent<OccupyingComponent>();
+                    this.occupyingComponent.FindRenderers();
                 }
-                // Create the mipmap enabled version.
-                this.autoResolutionMat = mat.CreateMipMapEnabled(this.CustomBlockType);
+
+
+                // Setup our new materials and figure out which to use.
+                Material mat = null;
+
+                if (this.imageData.Length != 0)
+                {
+                    // Create a new material from our data.
+                    yield return CustomBlocks.CreateMaterialFromImageData(this.imageData, this.CustomBlockType, x => mat = x);
+                    // If the creation fails, return false to signify.
+                    if (!mat)
+                    {
+                        callback(false);
+                        yield break;
+                    }
+
+                    // Create the mipmap enabled version.
+                    this.autoResolutionMat = mat.CreateMipMapEnabled(this.CustomBlockType);
+                }
+                else
+                {
+                    // If we are here, use the default flag material.
+                    mat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+                    // Get the mipmap enabled version.
+                    this.autoResolutionMat = CustomBlocks.instance.defaultMaterialsMipEnabled[this.CustomBlockType];
+                }
+
+                // Setup the automatic resolution version and determine which to
+                // use.
+                this.fullResolutionMat = mat;
+                if (CustomBlocks.UseMipMaps)
+                {
+                    mat = this.autoResolutionMat;
+                }
+
+                // Replace the material(s).
+                foreach(int i in this.RendererIndicies)
+                {
+                    this.occupyingComponent.renderers[i].material = mat;
+                }
             }
             else
             {
-                // If we are here, use the default flag material.
-                mat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
-                // Get the mipmap enabled version.
-                this.autoResolutionMat = CustomBlocks.instance.defaultMaterialsMipEnabled[this.CustomBlockType];
+                if (this.imageData.Length != 0)
+                {
+                    var size = CustomBlocks.SIZES[this.CustomBlockType].Item1;
+                    size *= CustomBlocks.SIZES[this.CustomBlockType].Item2 * 4;
+                    if (this.imageData.Length != size)
+                    {
+                        callback(false);
+                        yield break;
+                    }
+                }
             }
-
-            // Setup the automatic resolution version and determine which to
-            // use.
-            this.fullResolutionMat = mat;
-            if (CustomBlocks.UseMipMaps)
-            {
-                mat = this.autoResolutionMat;
-            }
-
-            // Replace the material(s).
-            foreach(int i in this.RendererIndicies)
-            {
-                this.occupyingComponent.renderers[i].material = mat;
-            }
-
             this.rendererPatched = true;
-            if (this.sendUpdates)
+            if (this.hasBeenPlaced && this.sendUpdates)
             {
                 this.GetComponent<ICustomBlockNetwork>()?.BroadcastChange(this.imageData);
             }
 
-            Resources.UnloadUnusedAssets();
+            if (!Raft_Network.IsHost && this.imageData.Length > 0)
+            {
+                // If we are not the host, set the image data to a single byte,
+                // But *only* if it is not an empty array already. This tells
+                // the code that it has image data without actually storing any.
+                this.imageData = new byte[1];
+            }
 
-            return true;
+            callback(true);
         }
 
         public override RGD Serialize_Save()

@@ -465,6 +465,10 @@ namespace DestinyCustomBlocks
         {
             get
             {
+                if (RAPI.IsDedicatedServer())
+                {
+                    return false;
+                }
                 return CustomBlocks.instance.ExtraSettingsAPI_GetCheckboxState("preventChanges");
             }
         }
@@ -479,56 +483,66 @@ namespace DestinyCustomBlocks
 
         IEnumerator Start()
         {
+            this.delayWorldLoading = true;
             CustomBlocks.modInfo = modlistEntry.jsonmodinfo;
             CustomBlocks.instance = this;
 
-            this.baseTextures = new Dictionary<BlockType, Texture2D>();
-            this.baseNormals = new Dictionary<BlockType, Texture2D>();
-            this.basePaints = new Dictionary<BlockType, Texture2D>();
-            this.defaultMaterials = new Dictionary<BlockType, Material>();
-            this.defaultMaterialsMipEnabled = new Dictionary<BlockType, Material>();
-            this.defaultSprites = new Dictionary<BlockType, Sprite>();
-            this.notification = HNotify.instance.AddNotification(HNotify.NotificationType.spinning, "Loading CustomBlocks...");
-
-            // Now, load the menu from the asset bundle.
-            var bundleLoadRequest = AssetBundle.LoadFromMemoryAsync(GetEmbeddedFileBytes("general_assets/customblocks.assets"));
-            yield return bundleLoadRequest;
-            this.bundle = bundleLoadRequest.assetBundle;
-
-            var request = this.bundle.LoadAssetAsync<GameObject>("CustomBlocksMenu");
-            yield return request;
-
-            try
+            // There will be many checks like this. Basically if we are one a
+            // dedicated server, we want to cut out all of the graphical
+            // processing.
+            if(!RAPI.IsDedicatedServer())
             {
-                CustomBlocks.menuAsset = request.asset as GameObject;
-                CustomBlocks.menu = Instantiate(CustomBlocks.menuAsset, this.transform);
-                CustomBlocks.cfMenu = CustomBlocks.menu.AddComponent<CustomBlocksMenu>();
-            }
-            catch (Exception e)
-            {
-                Debug.LogError(e);
-                this.notification?.Close();
-                yield break;
+                this.baseTextures = new Dictionary<BlockType, Texture2D>();
+                this.baseNormals = new Dictionary<BlockType, Texture2D>();
+                this.basePaints = new Dictionary<BlockType, Texture2D>();
+                this.defaultMaterials = new Dictionary<BlockType, Material>();
+                this.defaultMaterialsMipEnabled = new Dictionary<BlockType, Material>();
+                this.defaultSprites = new Dictionary<BlockType, Sprite>();
+                this.notification = HNotify.instance.AddNotification(HNotify.NotificationType.spinning, "Loading CustomBlocks...");
+
+                // Now, load the menu from the asset bundle.
+                var bundleLoadRequest = AssetBundle.LoadFromMemoryAsync(GetEmbeddedFileBytes("general_assets/customblocks.assets"));
+                yield return bundleLoadRequest;
+                this.bundle = bundleLoadRequest.assetBundle;
+
+                var request = this.bundle.LoadAssetAsync<GameObject>("CustomBlocksMenu");
+                yield return request;
+
+                try
+                {
+                    CustomBlocks.menuAsset = request.asset as GameObject;
+                    CustomBlocks.menu = Instantiate(CustomBlocks.menuAsset, this.transform);
+                    CustomBlocks.cfMenu = CustomBlocks.menu.AddComponent<CustomBlocksMenu>();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                    this.notification?.Close();
+                    this.delayWorldLoading = false;
+                    yield break;
+                }
+
+                request = this.bundle.LoadAssetAsync<GameObject>("IconRenderer");
+                yield return request;
+
+                try
+                {
+                    CustomBlocks.cameraAsset = request.asset as GameObject;
+                    CustomBlocks.camera = Instantiate(CustomBlocks.cameraAsset, this.transform);
+                    CustomBlocks.camera.SetActiveSafe(false);
+                    CustomBlocks.iconRenderer = CustomBlocks.camera.GetComponentInChildren<Camera>(true);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                    this.notification?.Close();
+                    this.delayWorldLoading = false;
+                    yield break;
+                }
+
+                yield return null;
             }
 
-            request = this.bundle.LoadAssetAsync<GameObject>("IconRenderer");
-            yield return request;
-
-            try
-            {
-                CustomBlocks.cameraAsset = request.asset as GameObject;
-                CustomBlocks.camera = Instantiate(CustomBlocks.cameraAsset, this.transform);
-                CustomBlocks.camera.SetActiveSafe(false);
-                CustomBlocks.iconRenderer = CustomBlocks.camera.GetComponentInChildren<Camera>(true);
-            }
-            catch (Exception e)
-            {
-                Debug.LogError(e);
-                this.notification?.Close();
-                yield break;
-            }
-
-            yield return new WaitForEndOfFrame();
 
             foreach (BlockType bt in IDS.Keys)
             {
@@ -547,32 +561,26 @@ namespace DestinyCustomBlocks
             {
                 Debug.LogError(e);
                 this.notification?.Close();
+                this.delayWorldLoading = false;
                 yield break;
             }
 
-            try
+            // First thing is first, let's fetch our shader from the game.
+            if(!RAPI.IsDedicatedServer())
             {
-                // First thing is first, let's fetch our shader from the game.
                 CustomBlocks.shader = Shader.Find(" BlockPaint");
                 CustomBlocks.standardShader = Shader.Find("Standard");
 
                 // Second, setup most of the materials using the basic methods.
-                this.SetupBasicBlockData(BlockType.BED);
-                this.SetupBasicBlockData(BlockType.CURTAIN_V);
-                this.SetupBasicBlockData(BlockType.CURTAIN_H);
-                this.SetupBasicBlockData(BlockType.FLAG);
-                this.SetupBasicBlockData(BlockType.RUG_BIG);
-                this.SetupBasicBlockData(BlockType.RUG_SMALL);
-                this.SetupBasicBlockData(BlockType.SAIL);
-            }
-            catch (Exception e)
-            {
-                Debug.LogError(e);
-                this.notification?.Close();
-                yield break;
+                yield return this.SetupBasicBlockData(BlockType.BED);
+                yield return this.SetupBasicBlockData(BlockType.CURTAIN_V);
+                yield return this.SetupBasicBlockData(BlockType.CURTAIN_H);
+                yield return this.SetupBasicBlockData(BlockType.FLAG);
+                yield return this.SetupBasicBlockData(BlockType.RUG_BIG);
+                yield return this.SetupBasicBlockData(BlockType.RUG_SMALL);
+                yield return this.SetupBasicBlockData(BlockType.SAIL);
             }
 
-            yield return new WaitForEndOfFrame();
 
             try
             {
@@ -587,20 +595,16 @@ namespace DestinyCustomBlocks
                     this.CreateCustomRugSmallItem(),
                     this.CreateCustomSailItem(),
                 };
-
             }
             catch (Exception e)
             {
                 Debug.LogError(e);
                 this.notification?.Close();
+                this.delayWorldLoading = false;
                 yield break;
             }
 
-            yield return new WaitForEndOfFrame();
-
             yield return this.SetupPosters();
-
-            yield return new WaitForEndOfFrame();
 
             try
             {
@@ -612,6 +616,7 @@ namespace DestinyCustomBlocks
                 CustomBlocks.Log(72);
                 Debug.LogError(e);
                 this.notification?.Close();
+                this.delayWorldLoading = false;
                 yield break;
             }
 
@@ -620,6 +625,7 @@ namespace DestinyCustomBlocks
 
             CustomBlocks.Log("Mod has been loaded.");
             this.notification?.Close();
+            this.delayWorldLoading = false;
         }
 
         public void OnModUnload()
@@ -659,17 +665,17 @@ namespace DestinyCustomBlocks
 
         public static void OpenCustomBlocksMenu(ICustomBlock cf)
         {
-            CustomBlocks.cfMenu.ShowMenu(cf);
+            CustomBlocks.instance.StartCoroutine(CustomBlocks.cfMenu.ShowMenu(cf));
         }
 
         /*
          * Performs serveral tasks, including the textures, material, and the
          * sprite.
          */
-        private void SetupBasicBlockData(BlockType bt)
+        private IEnumerator SetupBasicBlockData(BlockType bt)
         {
             string imgDir = FOLDER_NAMES[bt];
-            this.AddBaseTextures(bt, this.GetOriginalMaterial(IDS[bt].Item1), $"{imgDir}/default.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
+            yield return this.AddBaseTextures(bt, this.GetOriginalMaterial(IDS[bt].Item1), $"{imgDir}/default.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
 
             // Setup the base material.
 
@@ -702,8 +708,9 @@ namespace DestinyCustomBlocks
             this.defaultMaterials[bt] = mat;
             this.defaultMaterialsMipEnabled[bt] = mat.CreateMipMapEnabled(bt);
 
-            var def = GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt);
-            this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(def, bt);
+            byte[] def = null;
+            yield return GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt, x => def = x);
+            yield return CustomBlocks.CreateSpriteFromBytes(def, bt, x => this.defaultSprites[bt] = x);
         }
 
         private IEnumerator SetupPosters()
@@ -712,14 +719,6 @@ namespace DestinyCustomBlocks
             var recipe = new CostMultiple[]
             {
                 new CostMultiple(new[] { ItemManager.GetItemByIndex(25) }, 5),
-                /*new CostMultiple(new[]
-                                 {
-                                    ItemManager.GetItemByIndex(104),
-                                    ItemManager.GetItemByIndex(105),
-                                    ItemManager.GetItemByIndex(106),
-                                    ItemManager.GetItemByIndex(107),
-                                    ItemManager.GetItemByIndex(108),
-                                 }, 5),*/
             };
 
             List<Item_Base> posters = new List<Item_Base>();
@@ -727,37 +726,23 @@ namespace DestinyCustomBlocks
             foreach (BlockType bt in POSTER_DATA.Keys)
             {
                 PosterData pd = POSTER_DATA[bt];
-                string imgDir = FOLDER_NAMES[bt];
-                try
+                // All of the material and texture stuff is skippable on
+                // dedicated server.
+                if (!RAPI.IsDedicatedServer())
                 {
+                    string imgDir = FOLDER_NAMES[bt];
                     var originalMat = pd.CreateMaterial();
-                    this.AddBaseTextures(bt, originalMat, $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
+                    yield return this.AddBaseTextures(bt, originalMat, $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
                     originalMat.FullDestroy();
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError(e);
-                    this.notification?.Close();
-                    yield break;
-                }
 
-                try
-                {
-                    var def = GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt);
-                    Material mat = CustomBlocks.CreateMaterialFromImageData(def, bt);
+                    byte[] def = null;
+                    yield return GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt, x => def = x);
+                    Material mat = null;
+                    yield return CustomBlocks.CreateMaterialFromImageData(def, bt, x => mat = x);
                     this.defaultMaterials[bt] = mat;
                     this.defaultMaterialsMipEnabled[bt] = mat.CreateMipMapEnabled(bt);
-                    this.defaultSprites[bt] = CustomBlocks.CreateSpriteFromBytes(def, bt);
+                    yield return CustomBlocks.CreateSpriteFromBytes(def, bt, x => this.defaultSprites[bt] = x);
                 }
-                catch (Exception e)
-                {
-                    Debug.LogError(e);
-                    this.notification?.Close();
-                    yield break;
-                }
-
-                yield return new WaitForEndOfFrame();
-
                 try
                 {
                     Item_Base poster = this.CreateGenericCustomPoster<Block_CustomPoster, CustomBlock_Network>(IDS[bt].Item1, IDS[bt].Item2, POSTER_STRINGS[bt], pd, recipe, CraftingCategory.Skin);
@@ -776,7 +761,7 @@ namespace DestinyCustomBlocks
                     yield break;
                 }
 
-                yield return new WaitForEndOfFrame();
+                yield return null;
             }
 
             Traverse trav = Traverse.Create(this.posterBase.settings_recipe);
@@ -789,7 +774,7 @@ namespace DestinyCustomBlocks
          * specified block type using original material and the internal files
          * specified. Then, adds them to the dictionary.
          */
-        private void AddBaseTextures(BlockType bt, Material originalMat, string texture, string normal, string paint)
+        private IEnumerator AddBaseTextures(BlockType bt, Material originalMat, string texture, string normal, string paint)
         {
             Texture2D insertTex = new Texture2D(SIZES[bt].Item1, SIZES[bt].Item2);
             insertTex.wrapMode = TextureWrapMode.Clamp;
@@ -799,14 +784,14 @@ namespace DestinyCustomBlocks
             // Get the diffuse portion of the texture.
             add[0] = originalMat.GetMainTexture().CreateReadable();
             ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(texture));
-            CustomBlocks.PlaceImageInTexture(add[0], insertTex, bt);
+            yield return CustomBlocks.PlaceImageInTexture(add[0], insertTex, bt);
 
             // Now we need to generate our normal map.
             if (OVERRIDE_NORMAL[bt])
             {
                 add[1] = originalMat.GetNormalTexture().CreateReadable();
                 ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(normal));
-                CustomBlocks.PlaceImageInTexture(add[1], insertTex, bt, true);
+                yield return CustomBlocks.PlaceImageInTexture(add[1], insertTex, bt, true);
             }
             else
             {
@@ -819,7 +804,7 @@ namespace DestinyCustomBlocks
             // Now we need to generate our paint map.
             add[2] = originalMat.GetPaintTexture().CreateReadable();
             ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(paint));
-            CustomBlocks.PlaceImageInTexture(add[2], insertTex, bt, true);
+            yield return CustomBlocks.PlaceImageInTexture(add[2], insertTex, bt, true);
 
             this.baseTextures[bt] = add[0];
             this.baseNormals[bt] = add[1];
@@ -832,54 +817,64 @@ namespace DestinyCustomBlocks
          * Returns a new material with the flag data inside of it. Returns null
          * if the data is bad.
          */
-        public static Material CreateMaterialFromImageData(byte[] data, BlockType bt)
+        public static IEnumerator CreateMaterialFromImageData(byte[] data, BlockType bt, Action<Material> callback)
         {
             // Load the data into a texture.
             Texture2D tex = data.ToTexture2D(SIZES[bt].Item1, SIZES[bt].Item2);
             if (!tex)
             {
                 CustomBlocks.DebugLog("Could not create material from image data: data failed to convert.");
-                return null;
+                yield break;
             }
+
+            yield return new WaitForEndOfFrame();
 
             // Create the material and put the flag inside of it.
             Material mat = CustomBlocks.instance.PrepareMaterial(bt);
-            CustomBlocks.PlaceImageInMaterial(mat, tex, bt, true);
+            yield return CustomBlocks.PlaceImageInMaterial(mat, tex, bt, true);
 
             DestroyImmediate(tex);
 
-            // Return it.
-            return mat;
+            callback(mat);
         }
 
         /*
          * Uses the data to create a flag sprite. Returns null if flag is bad.
-         * Returns the default flag texture if the data is 0 bytes.
+         * Returns the default sprite if the data is 0 bytes.
          */
-        public static Sprite CreateSpriteFromBytes(byte[] data, BlockType bt)
+        public static IEnumerator CreateSpriteFromBytes(byte[] data, BlockType bt, Action<Sprite> callback)
         {
             if (data == null)
             {
-                return null;
+                callback(null);
+                yield break;
             }
             if (data.Length == 0)
             {
-                return CustomBlocks.instance.defaultSprites[bt];
+                callback(CustomBlocks.instance.defaultSprites[bt]);
+                yield break;
             }
 
             Vector2 pivot = new Vector2(0.5f, 0.5f);
             Rect rect = new Rect(0, 0, 1524, 1024);
 
             Texture2D container = new Texture2D(1524, 1024);
+            var timer = new System.Diagnostics.Stopwatch();
             Texture2D imageTex = data.ToTexture2D(SIZES[bt].Item1, SIZES[bt].Item2);
+
+            yield return new WaitForEndOfFrame();
+
             (int, int, int, int) newSize = CustomBlocks.ScaleToFit(SIZES[bt].Item1, SIZES[bt].Item2, 1524, 1024);
-            container.Edit(imageTex, newSize.Item1, newSize.Item2, newSize.Item3, newSize.Item4);
+            yield return container.Edit(imageTex, newSize.Item1, newSize.Item2, newSize.Item3, newSize.Item4);
+
+            yield return new WaitForEndOfFrame();
+
             // Make the sprite texture no longer readable.
             container.Apply(true, true);
 
             DestroyImmediate(imageTex);
 
-            return Sprite.Create(container, rect, pivot);
+            callback(Sprite.Create(container, rect, pivot));
         }
 
         /*
@@ -1048,8 +1043,7 @@ namespace DestinyCustomBlocks
                         }
                     }
 
-                    // Use traverse to get around generic BS.
-                    Traverse.Create(cb).Method("set_ImageData", new byte[0]).GetValue();
+                    StartCoroutine(cb.SetImageDataCo(new byte[0]));
                 }
             }
 
@@ -1128,7 +1122,7 @@ namespace DestinyCustomBlocks
                     nb.ReplaceValues(originalNb, nb);
                     DestroyImmediate(originalNb);
 
-                    cb.SetImageData(new byte[0]);
+                    StartCoroutine(cb.SetImageDataCo(new byte[0]));
                 }
             }
 
@@ -1172,7 +1166,10 @@ namespace DestinyCustomBlocks
             customBlock.settings_Inventory.Description = data[2];
 
             // Set the icon.
-            customBlock.settings_Inventory.Sprite = pd.CreateIcon();
+            if(!RAPI.IsDedicatedServer())
+            {
+                customBlock.settings_Inventory.Sprite = pd.CreateIcon();
+            }
 
             // Localization stuff.
             customBlock.settings_Inventory.LocalizationTerm = $"Item/{data[0]}";
@@ -1218,7 +1215,7 @@ namespace DestinyCustomBlocks
 
                     filter.mesh = pd.CreateMesh();
 
-                    cb.ImageData = new byte[0];
+                    StartCoroutine(cb.SetImageDataCo(new byte[0]));
                 }
             }
 
@@ -1375,7 +1372,7 @@ namespace DestinyCustomBlocks
                     cf.networkedBehaviour = cf.gameObject.AddComponent<CustomBlock_Network>();
                     cf.networkType = NetworkType.NetworkBehaviour;
 
-                    cf.ImageData = new byte[0];
+                    StartCoroutine(cf.SetImageDataCo(new byte[0]));
                 }
             }
 
@@ -1490,7 +1487,7 @@ namespace DestinyCustomBlocks
                     sail.ReplaceValues(originalNb, sail);
                     DestroyImmediate(originalNb);
 
-                    cs.ImageData = new byte[0];
+                    StartCoroutine(cs.SetImageDataCo(new byte[0]));
                 }
             }
 
@@ -1515,9 +1512,9 @@ namespace DestinyCustomBlocks
          * :param makeUnreadable: Sets the modified texture to no longer be
          *     readable after the operation, saving memory (default: false).
          */
-        private static void PlaceImageInMaterial(Material dest, Texture2D src, BlockType bt, bool makeUnreadable = false)
+        private static IEnumerator PlaceImageInMaterial(Material dest, Texture2D src, BlockType bt, bool makeUnreadable = false)
         {
-            CustomBlocks.PlaceImageInTexture(dest.GetMainTexture(), src, bt, makeUnreadable);
+            yield return CustomBlocks.PlaceImageInTexture(dest.GetMainTexture(), src, bt, makeUnreadable);
         }
 
         /*
@@ -1530,20 +1527,21 @@ namespace DestinyCustomBlocks
          * :param makeUnreadable: Sets the modified texture to no longer be
          *     readable after the operation, saving memory.
          */
-        private static void PlaceImageInTexture(Texture2D dest, Texture2D src, BlockType bt, bool makeUnreadable = false)
+        private static IEnumerator PlaceImageInTexture(Texture2D dest, Texture2D src, BlockType bt, bool makeUnreadable = false)
         {
+            yield return null;
             // A negative position means it's a split image.
             switch(LOCATIONS[bt].Item1)
             {
                 case -1:
-                    CustomBlocks.PlaceSplitImageInTexture(dest, src, bt);
+                    yield return CustomBlocks.PlaceSplitImageInTexture(dest, src, bt);
                     break;
                 case -2:
                     PosterData pd = POSTER_DATA[bt];
-                    dest.Edit(src, 0, 0, pd.widthPixels, pd.heightPixels, bt, true);
+                    yield return dest.Edit(src, 0, 0, pd.widthPixels, pd.heightPixels, bt, true);
                     break;
                 default:
-                    dest.Edit(src, LOCATIONS[bt].Item1, LOCATIONS[bt].Item2, SIZES[bt].Item1, SIZES[bt].Item2, bt, true);
+                    yield return dest.Edit(src, LOCATIONS[bt].Item1, LOCATIONS[bt].Item2, SIZES[bt].Item1, SIZES[bt].Item2, bt, true);
                     break;
             }
             if (makeUnreadable)
@@ -1556,7 +1554,7 @@ namespace DestinyCustomBlocks
          * Special function for determining how to deal with a split image to
          * place it into the texture.
          */
-        private static void PlaceSplitImageInTexture(Texture2D dest, Texture2D src, BlockType bt)
+        private static IEnumerator PlaceSplitImageInTexture(Texture2D dest, Texture2D src, BlockType bt)
         {
             foreach (SplitImageData sid in SPLIT_IMAGES[bt])
             {
@@ -1574,7 +1572,7 @@ namespace DestinyCustomBlocks
                     width = sid.widthHeight.Item1;
                     height = sid.widthHeight.Item2;
                 }
-                dest.Edit(slice, sid.destXY.Item1, sid.destXY.Item2, width, height, bt, true);
+                yield return dest.Edit(slice, sid.destXY.Item1, sid.destXY.Item2, width, height, bt, true);
                 DestroyImmediate(slice);
             }
         }
@@ -1602,6 +1600,12 @@ namespace DestinyCustomBlocks
         public static T CreateObject<T>() => (T)FormatterServices.GetUninitializedObject(typeof(T));
         public virtual bool ExtraSettingsAPI_GetCheckboxState(string name) => true;
         public KeyCode ExtraSettingsAPI_GetKeybindMain(string SettingName) => KeyCode.None;
+        public virtual void ExtraSettingsAPI_SaveSettings() {}
+        public virtual void ExtraSettingsAPI_SetCheckboxState(string name, bool state)
+        {
+            CustomBlocks.DebugLog($"Cannot change setting \"{name}\" (do you have extra settings api?).");
+        }
+
         public void ExtraSettingsAPI_Load()
         {
             this.SwitchMipMapUsage(CustomBlocks.UseMipMaps);
@@ -1644,6 +1648,16 @@ namespace DestinyCustomBlocks
                 // Only do something for custom blocks.
                 block?.GetComponent<ICustomBlock>()?.SwitchMipMapState(state);
             }
+        }
+
+        // Console commands, mainly for dedicated servers.
+        [ConsoleCommand(name: "ToggleMultiplayerBlocks", docs: "Toggles the state of multiplayer blocks. Requires extra settings api to work.")]
+        public static void ToggleMultiplayerBlocks()
+        {
+            bool state = CustomBlocks.IgnoreFlagMessages;
+            CustomBlocks.Log(state ? "Enabling multiplayer blocks." : "Disabling multiplayer blocks.");
+            CustomBlocks.instance.ExtraSettingsAPI_SetCheckboxState("ignoreFlagMessages", !state);
+            CustomBlocks.instance.ExtraSettingsAPI_SaveSettings();
         }
     }
 }

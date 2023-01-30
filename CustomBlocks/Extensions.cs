@@ -187,7 +187,7 @@ namespace DestinyCustomBlocks
         }
 
         // Aidan is a god.
-        public static void Edit(this Texture2D baseImg, Texture2D overlay, int xOffset, int yOffset, int targetX, int targetY, BlockType bt = BlockType.NONE, bool extend = false)
+        public static IEnumerator Edit(this Texture2D baseImg, Texture2D overlay, int xOffset, int yOffset, int targetX, int targetY, BlockType bt = BlockType.NONE, bool extend = false)
         {
             var w = targetX;
             var h = targetY;
@@ -199,11 +199,18 @@ namespace DestinyCustomBlocks
 
             for (var x = 0; x < w; x++)
             {
+                // Yield every 50 columns.
+                if ((x & 127) == 0)
+                {
+                    yield return null;
+                }
                 for (var y = 0; y < h; y++)
                 {
                     pixels[xOffset + x + (yOffset + y) * baseWidth] = overlay.GetPixelBilinear(Math.Abs((float)(mirrorX - x) / w), Math.Abs((float)(mirrorY - y) / h));
                 }
             }
+
+            yield return null;
 
             // This code only runs if we are extending the texture outwards.
             if (extend)
@@ -248,6 +255,7 @@ namespace DestinyCustomBlocks
                     }
                 }
             }
+            yield return null;
 
             baseImg.SetPixels(pixels);
             baseImg.Apply();
@@ -322,29 +330,32 @@ namespace DestinyCustomBlocks
             img.Apply();
         }
 
-        public static byte[] SanitizeImage(this byte[] arr, BlockType bt)
+        public static IEnumerator SanitizeImage(this byte[] arr, BlockType bt, Action<byte[]> callback)
         {
             if (arr == null)
             {
-                return new byte[0];
+                callback(new byte[0]);
+                yield break;
             }
             if (arr.Length == 0)
             {
-                return arr;
+                callback(arr);
+                yield break;
             }
             // Load our plain data.
             Texture2D texOriginal = new Texture2D(1, 1);
             texOriginal.wrapMode = TextureWrapMode.Clamp;
             if (!ImageConversion.LoadImage(texOriginal, arr))
             {
-                return new byte[0];
+                callback(new byte[0]);
+                yield break;
             }
 
             (int, int) size = CustomBlocks.SIZES[bt];
 
             // Resize the image before saving the color data.
             Texture2D tex = new Texture2D(size.Item1, size.Item2);
-            tex.Edit(texOriginal, 0, 0, size.Item1, size.Item2);
+            yield return tex.Edit(texOriginal, 0, 0, size.Item1, size.Item2);
 
             byte[] bytes = tex.GetPixels32().ToByteArray();
 
@@ -352,7 +363,7 @@ namespace DestinyCustomBlocks
             UnityEngine.Object.DestroyImmediate(tex);
             UnityEngine.Object.DestroyImmediate(texOriginal);
 
-            return bytes;
+            callback(bytes);
         }
 
         public static Texture2D ToTexture2D(this byte[] arr, int width, int height)

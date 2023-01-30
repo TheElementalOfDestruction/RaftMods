@@ -23,21 +23,12 @@ namespace DestinyCustomBlocks
                             byte[] imageData = Convert.FromBase64String(rgd.slots[0].exclusiveString);
                             switch (rgd.slots[0].itemAmount)
                             {
-                                // First versions used actual image bytes. This updates it.
+                                // First versions used actual image bytes. We
+                                // can no longer fix this because of the 4.0.0
+                                // update.
                                 case 0:
-                                    CustomBlocks.DebugLog("Found flag with old save data. Updating to new save system.");
-                                    // Handle older saves with a different form of image
-                                    // save data.
-                                    if (Raft_Network.IsHost)
-                                    {
-                                        imageData = imageData.SanitizeImage(cb.GetBlockType());
-                                    }
-                                    else
-                                    {
-                                        // Small protection against unsafe save
-                                        // data from remote host.
-                                        imageData = new byte[0];
-                                    }
+                                    CustomBlocks.DebugLog("Found flag with old save data. Use a previous version of the mod to update this save.");
+                                    imageData = new byte[0];
                                     break;
                                 // This was used in all versions of CustomBlocks
                                 // before 3.1.0. Posters with this version need

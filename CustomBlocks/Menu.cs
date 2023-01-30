@@ -147,8 +147,8 @@ namespace DestinyCustomBlocks
                         DestroyImmediate(this.preview.overrideSprite.texture);
                         DestroyImmediate(this.preview.overrideSprite);
                     }
-                    this.imageData = handler.data.SanitizeImage(this.currentBlock.GetBlockType());
-                    this.preview.overrideSprite = CustomBlocks.CreateSpriteFromBytes(this.imageData, this.currentBlock.GetBlockType());
+                    yield return handler.data.SanitizeImage(this.currentBlock.GetBlockType(), x => this.imageData = x);
+                    yield return CustomBlocks.CreateSpriteFromBytes(this.imageData, this.currentBlock.GetBlockType(), x => this.preview.overrideSprite = x);
                 }
             }
             else
@@ -163,8 +163,13 @@ namespace DestinyCustomBlocks
                 if (found)
                 {
                     byte[] temp = File.ReadAllBytes(path);
-                    byte[] temp2 = temp.Length > 0 ? temp.SanitizeImage(this.currentBlock.GetBlockType()) : temp;
-                    Sprite s = CustomBlocks.CreateSpriteFromBytes(temp2, this.currentBlock.GetBlockType());
+                    byte[] temp2 = temp;
+                    if (temp.Length > 0)
+                    {
+                        yield return temp.SanitizeImage(this.currentBlock.GetBlockType(), x => temp2 = x);
+                    }
+                    Sprite s = null;
+                    yield return CustomBlocks.CreateSpriteFromBytes(temp2, this.currentBlock.GetBlockType(), x => s = x);
                     if (temp2.Length == 0 || s == null)
                     {
                         this.HandleError("File does not contain a valid flag. Valid flag must be a PNG or JPG file.");
@@ -199,14 +204,15 @@ namespace DestinyCustomBlocks
             this.preview.overrideSprite = CustomBlocks.instance.defaultSprites[this.currentBlock.GetBlockType()];
         }
 
-        public void ShowMenu(ICustomBlock cb)
+        public IEnumerator ShowMenu(ICustomBlock cb)
         {
+            if (cb == null)
+            {
+                yield break;
+            }
             try
             {
-                if (cb == null)
-                {
-                    return;
-                }
+
                 this.cg.alpha = 1;
                 this.cg.interactable = true;
                 this.cg.blocksRaycasts = true;
@@ -220,13 +226,14 @@ namespace DestinyCustomBlocks
                 }
                 this.imageData = cb.GetImageData();
                 this.inputField.readOnly = false;
-                this.preview.overrideSprite = CustomBlocks.CreateSpriteFromBytes(this.imageData, cb.GetBlockType());
                 RAPI.ToggleCursor(true);
             }
             catch (System.Exception e)
             {
                 Debug.LogError(e);
+                yield break;
             }
+            yield return CustomBlocks.CreateSpriteFromBytes(this.imageData, cb.GetBlockType(), x => this.preview.overrideSprite = x);
         }
 
         public void UpdateBlock()

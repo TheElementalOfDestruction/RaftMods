@@ -1,3 +1,9 @@
+**v4.0.0**
+* Dedicated server compatibility! You can now use this on dedicated servers with no issues (none that I could find, anyways).
+* Significantly reduced freezing for every operation.
+* Fixed lag spikes that would happen on world load (it was worse the more blocks you had from this mod).
+* Changed internal code so that clients don't store the full image data all the time even though it only gets used once for them.
+
 **v3.2.0**
 * *Finally* fixed the issue causing sails and flags to not flap around as they should.
 * *Finally* fixed the issue causing posters to look really messed up.
