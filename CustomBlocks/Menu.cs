@@ -18,6 +18,7 @@ namespace DestinyCustomBlocks
         private TMPro.TMP_InputField inputField;
         private byte[] imageData;
         private bool shown;
+        private Coroutine spriteLoader = null;
 
         void Start()
         {
@@ -86,6 +87,13 @@ namespace DestinyCustomBlocks
             CustomBlocks.Log(e);
         }
 
+        public void HideLoading()
+        {
+            // Currently this function does mostly nothing until I update the menu
+            // asset to have loading.
+            this.inputField.readOnly = false;
+        }
+
         public void HideMenu()
         {
             this.currentBlock = null;
@@ -94,6 +102,11 @@ namespace DestinyCustomBlocks
             this.cg.blocksRaycasts = false;
             this.shown = false;
             this.inputField.readOnly = true;
+            if (this.spriteLoader != null)
+            {
+                StopCoroutine(this.spriteLoader);
+                this.HideLoading();
+            }
             RAPI.ToggleCursor(false);
         }
 
@@ -101,8 +114,11 @@ namespace DestinyCustomBlocks
         {
             if (this.currentBlock == null)
             {
+                this.spriteLoader = null;
                 yield break;
             }
+
+            this.ShowLoading();
 
             string path = this.inputField.text;
 
@@ -115,6 +131,7 @@ namespace DestinyCustomBlocks
                 yield return www.SendWebRequest();
                 if (this.currentBlock == null)
                 {
+                    this.spriteLoader = null;
                     yield break;
                 }
 
@@ -191,17 +208,28 @@ namespace DestinyCustomBlocks
                     this.HandleError("Path could not be found.");
                 }
             }
+            this.spriteLoader = null;
         }
 
         public void LoadPreviewStart()
         {
-            StartCoroutine(this.LoadPreview());
+            if (this.spriteLoader != null)
+            {
+                this.spriteLoader = StartCoroutine(this.LoadPreview());
+            }
         }
 
         public void SetBlockDefault()
         {
             this.imageData = new byte[0];
             this.preview.overrideSprite = CustomBlocks.instance.defaultSprites[this.currentBlock.GetBlockType()];
+        }
+
+        public void ShowLoading()
+        {
+            // Currently this function does mostly nothing until I update the menu
+            // asset to have loading.
+            this.inputField.readOnly = true;
         }
 
         public IEnumerator ShowMenu(ICustomBlock cb)
@@ -212,7 +240,6 @@ namespace DestinyCustomBlocks
             }
             try
             {
-
                 this.cg.alpha = 1;
                 this.cg.interactable = true;
                 this.cg.blocksRaycasts = true;
