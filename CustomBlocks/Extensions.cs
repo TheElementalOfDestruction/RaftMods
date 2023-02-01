@@ -171,6 +171,11 @@ namespace DestinyCustomBlocks
             RenderTexture.ReleaseTemporary(temp);
         }
 
+        public static void CacheTexture(this Texture2D tex, string name)
+        {
+            File.WriteAllBytes($"cb_v{CustomBlocks.versionStr}_{name}.png", ImageConversion.EncodeToPNG(tex));
+        }
+
         // How is Aidan so amazing?
         public static Texture2D CreateReadable(this Texture2D source, bool mipChain = false, Rect? copyArea = null, RenderTextureFormat format = RenderTextureFormat.Default, RenderTextureReadWrite readWrite = RenderTextureReadWrite.Default, TextureFormat? targetFormat = null)
         {
@@ -313,11 +318,6 @@ namespace DestinyCustomBlocks
                 File.Delete(path);
             }
             return false;
-        }
-
-        public static void CacheTexture(this Texture2D tex, string name)
-        {
-            File.WriteAllBytes($"cb_v{CustomBlocks.versionStr}_{name}.png", ImageConversion.EncodeToPNG(tex));
         }
 
         public static void Rotate(this Texture2D img, Rotation rot)
