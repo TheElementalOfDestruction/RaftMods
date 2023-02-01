@@ -53,7 +53,6 @@ namespace DestinyCustomBlocks
             this.preview = this.GetComponentsInChildren<UnityEngine.UI.Image>().First(x => x.gameObject.name.StartsWith("Preview"));
             this.inputField = this.GetComponentInChildren<TMPro.TMP_InputField>();
             this.loadingPopup = this.GetComponentsInChildren<UnityEngine.UI.Image>().First(x => x.gameObject.name.StartsWith("LoadingPopup")).gameObject;
-            this.loadingPopup.GetComponentInChildren<Animator>().Play("Base Layer.Spin");
             this.loadingPopup.SetActive(false);
 
             // Setup the text entry. You would expect escape to not be
@@ -97,7 +96,7 @@ namespace DestinyCustomBlocks
 
         public void HideLoading()
         {
-            Debug.Log("Hiding menu");
+            CustomBlocks.DebugLog("Hiding menu");
             this.loadingPopup.SetActive(false);
             this.inputField.readOnly = false;
         }
