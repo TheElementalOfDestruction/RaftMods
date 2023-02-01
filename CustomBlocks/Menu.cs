@@ -19,6 +19,7 @@ namespace DestinyCustomBlocks
         private byte[] imageData;
         private bool shown;
         private Coroutine spriteLoader = null;
+        private GameObject loadingPopup;
 
         void Start()
         {
@@ -41,12 +42,18 @@ namespace DestinyCustomBlocks
                 {
                     button.onClick.AddListener(this.UpdateBlock);
                 }
+                else
+                {
+                    CustomBlocks.DebugLog($"Unknown button found: {button}");
+                }
             }
 
             // Get the components.
             this.cg = this.GetComponent<CanvasGroup>();
             this.preview = this.GetComponentsInChildren<UnityEngine.UI.Image>().First(x => x.gameObject.name.StartsWith("Preview"));
             this.inputField = this.GetComponentInChildren<TMPro.TMP_InputField>();
+            this.loadingPopup = this.GetComponentsInChildren<UnityEngine.UI.Image>().First(x => x.gameObject.name.StartsWith("LoadingPopup")).gameObject;
+            this.loadingPopup.SetActive(false);
 
             // Setup the text entry. You would expect escape to not be
             // considered submitting, but it is so we have to do this.
@@ -89,8 +96,7 @@ namespace DestinyCustomBlocks
 
         public void HideLoading()
         {
-            // Currently this function does mostly nothing until I update the menu
-            // asset to have loading.
+            this.loadingPopup.SetActive(false);
             this.inputField.readOnly = false;
         }
 
@@ -213,7 +219,7 @@ namespace DestinyCustomBlocks
 
         public void LoadPreviewStart()
         {
-            if (this.spriteLoader != null)
+            if (this.spriteLoader == null)
             {
                 this.spriteLoader = StartCoroutine(this.LoadPreview());
             }
@@ -227,8 +233,7 @@ namespace DestinyCustomBlocks
 
         public void ShowLoading()
         {
-            // Currently this function does mostly nothing until I update the menu
-            // asset to have loading.
+            this.loadingPopup.SetActive(true);
             this.inputField.readOnly = true;
         }
 
@@ -260,7 +265,9 @@ namespace DestinyCustomBlocks
                 Debug.LogError(e);
                 yield break;
             }
+            this.ShowLoading();
             yield return CustomBlocks.CreateSpriteFromBytes(this.imageData, cb.GetBlockType(), x => this.preview.overrideSprite = x);
+            this.HideLoading();
         }
 
         public void UpdateBlock()

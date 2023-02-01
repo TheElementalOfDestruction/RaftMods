@@ -412,6 +412,7 @@ namespace DestinyCustomBlocks
         public static Shader shader;
         public static Shader standardShader;
         public static Camera iconRenderer;
+        public static string versionStr;
 
         private static GameObject menu;
         private static GameObject menuAsset;
@@ -486,6 +487,7 @@ namespace DestinyCustomBlocks
             this.delayWorldLoading = true;
             CustomBlocks.modInfo = modlistEntry.jsonmodinfo;
             CustomBlocks.instance = this;
+            CustomBlocks.versionStr = CustomBlocks.modInfo.version;
 
             // There will be many checks like this. Basically if we are one a
             // dedicated server, we want to cut out all of the graphical
@@ -500,7 +502,10 @@ namespace DestinyCustomBlocks
                 this.defaultSprites = new Dictionary<BlockType, Sprite>();
                 this.notification = HNotify.instance.AddNotification(HNotify.NotificationType.spinning, "Loading CustomBlocks...");
 
-                // Now, load the menu from the asset bundle.
+                // Check the cache for old entries and erase them if found.
+                yield return this.CheckCache();
+
+                // Load the menu from the asset bundle.
                 var bundleLoadRequest = AssetBundle.LoadFromMemoryAsync(GetEmbeddedFileBytes("general_assets/customblocks.assets"));
                 yield return bundleLoadRequest;
                 this.bundle = bundleLoadRequest.assetBundle;
@@ -565,13 +570,13 @@ namespace DestinyCustomBlocks
                 yield break;
             }
 
-            // First thing is first, let's fetch our shader from the game.
             if(!RAPI.IsDedicatedServer())
             {
+                // Fetch our shader from the game.
                 CustomBlocks.shader = Shader.Find(" BlockPaint");
                 CustomBlocks.standardShader = Shader.Find("Standard");
 
-                // Second, setup most of the materials using the basic methods.
+                // Next, setup most of the materials using the basic methods.
                 yield return this.SetupBasicBlockData(BlockType.BED);
                 yield return this.SetupBasicBlockData(BlockType.CURTAIN_V);
                 yield return this.SetupBasicBlockData(BlockType.CURTAIN_H);
@@ -666,6 +671,15 @@ namespace DestinyCustomBlocks
         public static void OpenCustomBlocksMenu(ICustomBlock cf)
         {
             CustomBlocks.instance.StartCoroutine(CustomBlocks.cfMenu.ShowMenu(cf));
+        }
+
+        /*
+         * Checks for any old images in the cache, clearing them if found.
+         */
+        public IEnumerator CheckCache()
+        {
+            // TODO
+            yield return null;
         }
 
         /*

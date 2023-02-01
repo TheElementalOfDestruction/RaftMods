@@ -195,11 +195,21 @@ namespace DestinyCustomBlocks
         {
             // Load the base texture.
             Texture2D iconTex = new Texture2D(512, 512, TextureFormat.RGBA32, false);
-            ImageConversion.LoadImage(iconTex, CustomBlocks.instance.GetEmbeddedFileBytes($"general_assets/{(this.horizontal ? "poster_icon_base_h.png" : "poster_icon_base_v.png")}"));
 
-            // Place the text in the icon.
-            iconTex.AddText(this.ratio);
-            // Make unreadable.
+            // Determine the name to be used for the cache. The main module will
+            // handle the semantics for actually finding it.
+            string iconName = $"poster_{this.ratio}";
+            // Attempt to load from the cache. If it can't load, create it and
+            // store it in the cache.
+            if (!iconTex.LoadCachedTexture(iconName))
+            {
+                ImageConversion.LoadImage(iconTex, CustomBlocks.instance.GetEmbeddedFileBytes($"general_assets/{(this.horizontal ? "poster_icon_base_h.png" : "poster_icon_base_v.png")}"));
+
+                // Place the text in the icon.
+                iconTex.AddText(this.ratio);
+            }
+
+            // Make the texture unreadable.
             iconTex.Apply(true, true);
 
             // Create and return the sprite.

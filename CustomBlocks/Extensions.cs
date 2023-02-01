@@ -2,6 +2,7 @@ using HarmonyLib;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using UnityEngine;
 
@@ -159,6 +160,8 @@ namespace DestinyCustomBlocks
             RenderTexture.active = temp;
             var area = new Rect(0, 0, temp.width, temp.height);
             area.y = temp.height - area.y - area.height;
+            // Read pixels from the current render target (the render texture)
+            // into source.
             source.ReadPixels(area, 0, 0);
             source.Apply();
             RenderTexture.active = prev;
@@ -186,7 +189,37 @@ namespace DestinyCustomBlocks
             return texture;
         }
 
-        // Aidan is a god.
+        /*
+         * Returns a new Texture2D containing a portion of the original image.
+         */
+        public static Texture2D Cut(this Texture2D baseImg, int xOffset, int yOffset, int width, int height)
+        {
+            Texture2D tex = new Texture2D(width, height, baseImg.format, false);
+            for (int y = 0; y < height; ++y)
+            {
+                for (int x = 0; x < width; ++x)
+                {
+                    tex.SetPixel(x, y, baseImg.GetPixel(x + xOffset, y + yOffset));
+                }
+            }
+            tex.Apply();
+            return tex;
+        }
+
+        public static Texture2D Cut(this Texture2D baseImg, (int, int) xyOffset, (int, int) widthHeight)
+        {
+            return baseImg.Cut(xyOffset.Item1, xyOffset.Item2, widthHeight.Item1, widthHeight.Item2);
+        }
+
+        /*
+         * Edits the Texture2D, overlaying the specified image into the
+         * specified area. Uses the block type to determine a few rules. If the
+         * texture needs a border added to it for mipmaps, make sure to enable
+         * that option.
+         *
+         * Thanks to Aidanamite for the original code this function is based off
+         * of.
+         */
         public static IEnumerator Edit(this Texture2D baseImg, Texture2D overlay, int xOffset, int yOffset, int targetX, int targetY, BlockType bt = BlockType.NONE, bool extend = false)
         {
             var w = targetX;
@@ -262,25 +295,12 @@ namespace DestinyCustomBlocks
         }
 
         /*
-         * Returns a new Texture2D containing a portion of the original image.
+         * Loads the image from the cache using the name as a key. Automatically
+         * determines the naming convention used for the cached image.
          */
-        public static Texture2D Cut(this Texture2D baseImg, int xOffset, int yOffset, int width, int height)
+        public static bool LoadCachedTexture(this Texture2D destination, string name)
         {
-            Texture2D tex = new Texture2D(width, height, baseImg.format, false);
-            for (int y = 0; y < height; ++y)
-            {
-                for (int x = 0; x < width; ++x)
-                {
-                    tex.SetPixel(x, y, baseImg.GetPixel(x + xOffset, y + yOffset));
-                }
-            }
-            tex.Apply();
-            return tex;
-        }
-
-        public static Texture2D Cut(this Texture2D baseImg, (int, int) xyOffset, (int, int) widthHeight)
-        {
-            return baseImg.Cut(xyOffset.Item1, xyOffset.Item2, widthHeight.Item1, widthHeight.Item2);
+            return false;
         }
 
         public static void Rotate(this Texture2D img, Rotation rot)
