@@ -678,8 +678,14 @@ namespace DestinyCustomBlocks
          */
         public IEnumerator CheckCache()
         {
-            // TODO
-            yield return null;
+            foreach (var x in Directory.EnumerateFiles(HMLLibrary.HLib.path_cacheFolder_temp, "cb_v*.png"))
+            {
+                if (!x.StartsWith($"cb_v{CustomBlocks.versionStr}"))
+                {
+                    File.Delete(x);
+                    yield return null;
+                }
+            }
         }
 
         /*

@@ -300,7 +300,24 @@ namespace DestinyCustomBlocks
          */
         public static bool LoadCachedTexture(this Texture2D destination, string name)
         {
+            string path = Path.Combine(HMLLibrary.HLib.path_cacheFolder_temp, $"cb_v{CustomBlocks.versionStr}_{name}.png");
+            if (File.Exists(path))
+            {
+                if (ImageConversion.LoadImage(destination, File.ReadAllBytes(path)))
+                {
+                    return true;
+                }
+
+                // If we are here, the file exists, but it was bad, so let's
+                // delete it.
+                File.Delete(path);
+            }
             return false;
+        }
+
+        public static void CacheTexture(this Texture2D tex, string name)
+        {
+            File.WriteAllBytes($"cb_v{CustomBlocks.versionStr}_{name}.png", ImageConversion.EncodeToPNG(tex));
         }
 
         public static void Rotate(this Texture2D img, Rotation rot)
