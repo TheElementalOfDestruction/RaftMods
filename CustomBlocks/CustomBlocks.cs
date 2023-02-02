@@ -407,6 +407,8 @@ namespace DestinyCustomBlocks
 
         public static Dictionary<int, BlockType> ID_TO_BLOCKTYPE = new Dictionary<int, BlockType>();
 
+        public static readonly string CACHE_DIR = HMLLibrary.HLib.path_cacheFolder_temp;
+
         public static CustomBlocks instance;
         public static JsonModInfo modInfo;
         public static Shader shader;
@@ -586,7 +588,6 @@ namespace DestinyCustomBlocks
                 yield return this.SetupBasicBlockData(BlockType.SAIL);
             }
 
-
             try
             {
                 // Create the custom block item bases.
@@ -686,6 +687,19 @@ namespace DestinyCustomBlocks
                     yield return null;
                 }
             }
+        }
+
+        /*
+         *
+         */
+        public static void GetCacheName(string name)
+        {
+            return Path.Combine(CustomBlocks.CACHE_DIR, $"cb_v{CustomBlocks.versionStr}_{name}.png");
+        }
+
+        public static bool IsInCache(string name)
+        {
+            return File.Exists(CustomBlocks.GetCacheName(name));
         }
 
         /*

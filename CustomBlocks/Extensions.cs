@@ -173,7 +173,8 @@ namespace DestinyCustomBlocks
 
         public static void CacheTexture(this Texture2D tex, string name)
         {
-            File.WriteAllBytes($"cb_v{CustomBlocks.versionStr}_{name}.png", ImageConversion.EncodeToPNG(tex));
+
+            File.WriteAllBytes(CustomBlocks.GetCacheName(name), ImageConversion.EncodeToPNG(tex));
         }
 
         // How is Aidan so amazing?
@@ -305,7 +306,7 @@ namespace DestinyCustomBlocks
          */
         public static bool LoadCachedTexture(this Texture2D destination, string name)
         {
-            string path = Path.Combine(HMLLibrary.HLib.path_cacheFolder_temp, $"cb_v{CustomBlocks.versionStr}_{name}.png");
+            string path = CustomBlocks.GetCacheName(name);
             if (File.Exists(path))
             {
                 if (ImageConversion.LoadImage(destination, File.ReadAllBytes(path)))
