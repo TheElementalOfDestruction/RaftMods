@@ -679,7 +679,7 @@ namespace DestinyCustomBlocks
          */
         public IEnumerator CheckCache()
         {
-            foreach (var x in Directory.EnumerateFiles(HMLLibrary.HLib.path_cacheFolder_temp, "cb_v*.png"))
+            foreach (var x in Directory.EnumerateFiles(CustomBlocks.CACHE_DIR, "cb_v*.png"))
             {
                 if (!x.StartsWith($"cb_v{CustomBlocks.versionStr}"))
                 {
