@@ -188,7 +188,7 @@ namespace DestinyCustomBlocks
             var area = copyArea ?? new Rect(0, 0, temp.width, temp.height);
             area.y = temp.height - area.y - area.height;
             var texture = new Texture2D((int)area.width, (int)area.height, targetFormat ?? TextureFormat.RGBA32, mipChain);
-            texture.ReadPixels(area, 0, 0);
+            texture.ReadPixels(area, 0, 0, mipChain);
             texture.wrapMode = TextureWrapMode.Clamp;
             texture.Apply();
             RenderTexture.active = prev;
