@@ -198,7 +198,7 @@ namespace DestinyCustomBlocks
 
             // Determine the name to be used for the cache. The main module will
             // handle the semantics for actually finding it.
-            string iconName = $"pos_ico_{this.ratio}";
+            string iconName = $"pos_ico_{this.ratio.Replace(':', '-')}";
             // Attempt to load from the cache. If it can't load, create it and
             // store it in the cache.
             if (!iconTex.LoadCachedTexture(iconName))

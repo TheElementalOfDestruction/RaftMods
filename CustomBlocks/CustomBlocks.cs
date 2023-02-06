@@ -3,6 +3,7 @@ using I2.Loc;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
@@ -407,7 +408,7 @@ namespace DestinyCustomBlocks
 
         public static Dictionary<int, BlockType> ID_TO_BLOCKTYPE = new Dictionary<int, BlockType>();
 
-        public static readonly string CACHE_DIR = HMLLibrary.HLib.path_cacheFolder_temp;
+        public static readonly string CACHE_DIR = HMLLibrary.HLib.path_cacheFolder_textures;
 
         public static CustomBlocks instance;
         public static JsonModInfo modInfo;
@@ -681,7 +682,7 @@ namespace DestinyCustomBlocks
         {
             foreach (var x in Directory.EnumerateFiles(CustomBlocks.CACHE_DIR, "cb_v*.png"))
             {
-                if (!x.StartsWith($"cb_v{CustomBlocks.versionStr}"))
+                if (!Path.GetFileName(x).StartsWith($"cb_v{CustomBlocks.versionStr}"))
                 {
                     File.Delete(x);
                     yield return null;
@@ -692,7 +693,7 @@ namespace DestinyCustomBlocks
         /*
          *
          */
-        public static void GetCacheName(string name)
+        public static string GetCacheName(string name)
         {
             return Path.Combine(CustomBlocks.CACHE_DIR, $"cb_v{CustomBlocks.versionStr}_{name}.png");
         }
@@ -815,17 +816,37 @@ namespace DestinyCustomBlocks
 
             Texture2D[] add = new Texture2D[3];
 
+            string mainName = $"{bt}_main";
+            string normalName = $"{bt}_normal";
+            string paintName = $"{bt}_paint";
+
             // Get the diffuse portion of the texture.
-            add[0] = originalMat.GetMainTexture().CreateReadable();
-            ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(texture));
-            yield return CustomBlocks.PlaceImageInTexture(add[0], insertTex, bt);
+            add[0] = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            if (!add[0].LoadCachedTexture(mainName))
+            {
+                // Delete the temporary texture.
+                DestroyImmediate(add[0]);
+                // Copy the original texture, paste out stuff into it, then
+                // cache it.
+                add[0] = originalMat.GetMainTexture().CreateReadable();
+                ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(texture));
+                yield return CustomBlocks.PlaceImageInTexture(add[0], insertTex, bt);
+                add[0].CacheTexture(mainName);
+            }
 
             // Now we need to generate our normal map.
             if (OVERRIDE_NORMAL[bt])
             {
-                add[1] = originalMat.GetNormalTexture().CreateReadable();
-                ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(normal));
-                yield return CustomBlocks.PlaceImageInTexture(add[1], insertTex, bt, true);
+                add[1] = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+                if (!add[1].LoadCachedTexture(normalName))
+                {
+                    // Delete the temporary texture.
+                    DestroyImmediate(add[1]);
+
+                    add[1] = originalMat.GetNormalTexture().CreateReadable();
+                    ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(normal));
+                    yield return CustomBlocks.PlaceImageInTexture(add[1], insertTex, bt, true, normalName);
+                }
             }
             else
             {
@@ -836,9 +857,16 @@ namespace DestinyCustomBlocks
             }
 
             // Now we need to generate our paint map.
-            add[2] = originalMat.GetPaintTexture().CreateReadable();
-            ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(paint));
-            yield return CustomBlocks.PlaceImageInTexture(add[2], insertTex, bt, true);
+            add[2] = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            if (!add[2].LoadCachedTexture(paintName))
+            {
+                // Delete the temporary texture.
+                DestroyImmediate(add[2]);
+
+                add[2] = originalMat.GetPaintTexture().CreateReadable();
+                ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(paint));
+                yield return CustomBlocks.PlaceImageInTexture(add[2], insertTex, bt, true, paintName);
+            }
 
             this.baseTextures[bt] = add[0];
             this.baseNormals[bt] = add[1];
@@ -1561,7 +1589,7 @@ namespace DestinyCustomBlocks
          * :param makeUnreadable: Sets the modified texture to no longer be
          *     readable after the operation, saving memory.
          */
-        private static IEnumerator PlaceImageInTexture(Texture2D dest, Texture2D src, BlockType bt, bool makeUnreadable = false)
+        private static IEnumerator PlaceImageInTexture(Texture2D dest, Texture2D src, BlockType bt, bool makeUnreadable = false, string cacheName = null)
         {
             yield return null;
             // A negative position means it's a split image.
@@ -1577,6 +1605,10 @@ namespace DestinyCustomBlocks
                 default:
                     yield return dest.Edit(src, LOCATIONS[bt].Item1, LOCATIONS[bt].Item2, SIZES[bt].Item1, SIZES[bt].Item2, bt, true);
                     break;
+            }
+            if (cacheName != null)
+            {
+                dest.CacheTexture(cacheName);
             }
             if (makeUnreadable)
             {
