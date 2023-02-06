@@ -199,23 +199,26 @@ namespace DestinyCustomBlocks
         /*
          * Returns a new Texture2D containing a portion of the original image.
          */
-        public static Texture2D Cut(this Texture2D baseImg, int xOffset, int yOffset, int width, int height)
+        public static Texture2D Cut(this Texture2D baseImg, int xOffset, int yOffset, int width, int height, BlockType bt)
         {
+            float baseWidth = CustomBlocks.SIZES[bt].Item1 - 1;
+            float baseHeight = CustomBlocks.SIZES[bt].Item2 - 1;
+
             Texture2D tex = new Texture2D(width, height, baseImg.format, false);
             for (int y = 0; y < height; ++y)
             {
                 for (int x = 0; x < width; ++x)
                 {
-                    tex.SetPixel(x, y, baseImg.GetPixel(x + xOffset, y + yOffset));
+                    tex.SetPixel(x, y, baseImg.GetPixelBilinear((x + xOffset) / baseWidth, (y + yOffset) / baseHeight));
                 }
             }
             tex.Apply();
             return tex;
         }
 
-        public static Texture2D Cut(this Texture2D baseImg, (int, int) xyOffset, (int, int) widthHeight)
+        public static Texture2D Cut(this Texture2D baseImg, (int, int) xyOffset, (int, int) widthHeight, BlockType bt)
         {
-            return baseImg.Cut(xyOffset.Item1, xyOffset.Item2, widthHeight.Item1, widthHeight.Item2);
+            return baseImg.Cut(xyOffset.Item1, xyOffset.Item2, widthHeight.Item1, widthHeight.Item2, bt);
         }
 
         /*

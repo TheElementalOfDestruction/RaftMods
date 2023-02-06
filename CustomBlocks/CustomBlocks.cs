@@ -845,19 +845,7 @@ namespace DestinyCustomBlocks
                 // Copy the original texture, paste out stuff into it, then
                 // cache it.
                 add[0] = originalMat.GetMainTexture().CreateReadable();
-                if (LOCATIONS[bt].Item1 == -1)
-                {
-                    // For cut images, we *need* to resize for this step.
-                    Texture2D scaleTemp = new Texture2D(1, 1, TextureFormat.RGBA32, false);
-                    scaleTemp.wrapMode = TextureWrapMode.Clamp;
-                    ImageConversion.LoadImage(scaleTemp, GetEmbeddedFileBytes(texture));
-                    insertTex.Edit(scaleTemp, 0, 0, SIZES[bt].Item1, SIZES[bt].Item2);
-                    DestroyImmediate(scaleTemp);
-                }
-                else
-                {
-                    ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(texture));
-                }
+                ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(texture));
                 yield return CustomBlocks.PlaceImageInTexture(add[0], insertTex, bt);
                 add[0].CacheTexture(mainName);
             }
@@ -872,19 +860,7 @@ namespace DestinyCustomBlocks
                     DestroyImmediate(add[1]);
 
                     add[1] = originalMat.GetNormalTexture().CreateReadable();
-                    if (LOCATIONS[bt].Item1 == -1)
-                    {
-                        // For cut images, we *need* to resize for this step.
-                        Texture2D scaleTemp = new Texture2D(1, 1, TextureFormat.RGBA32, false);
-                        scaleTemp.wrapMode = TextureWrapMode.Clamp;
-                        ImageConversion.LoadImage(scaleTemp, GetEmbeddedFileBytes(normal));
-                        insertTex.Edit(scaleTemp, 0, 0, SIZES[bt].Item1, SIZES[bt].Item2);
-                        DestroyImmediate(scaleTemp);
-                    }
-                    else
-                    {
-                        ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(normal));
-                    }
+                    ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(normal));
                     yield return CustomBlocks.PlaceImageInTexture(add[1], insertTex, bt, true, normalName);
                 }
             }
@@ -904,19 +880,7 @@ namespace DestinyCustomBlocks
                 DestroyImmediate(add[2]);
 
                 add[2] = originalMat.GetPaintTexture().CreateReadable();
-                if (LOCATIONS[bt].Item1 == -1)
-                {
-                    // For cut images, we *need* to resize for this step.
-                    Texture2D scaleTemp = new Texture2D(1, 1, TextureFormat.RGBA32, false);
-                    scaleTemp.wrapMode = TextureWrapMode.Clamp;
-                    ImageConversion.LoadImage(scaleTemp, GetEmbeddedFileBytes(paint));
-                    insertTex.Edit(scaleTemp, 0, 0, SIZES[bt].Item1, SIZES[bt].Item2);
-                    DestroyImmediate(scaleTemp);
-                }
-                else
-                {
-                    ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(paint));
-                }
+                ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(paint));
                 yield return CustomBlocks.PlaceImageInTexture(add[2], insertTex, bt, true, paintName);
             }
 
@@ -1653,7 +1617,7 @@ namespace DestinyCustomBlocks
         private static IEnumerator PlaceImageInTexture(Texture2D dest, Texture2D src, BlockType bt, bool makeUnreadable = false, string cacheName = null)
         {
             yield return null;
-            // A negative position means it's a special edit.
+            // A negative position means it's a split image.
             switch(LOCATIONS[bt].Item1)
             {
                 case -1:
@@ -1685,7 +1649,7 @@ namespace DestinyCustomBlocks
         {
             foreach (SplitImageData sid in SPLIT_IMAGES[bt])
             {
-                Texture2D slice = src.Cut(sid.srcXY, sid.widthHeight);
+                Texture2D slice = src.Cut(sid.srcXY, sid.widthHeight, bt);
                 slice.Rotate(sid.rotation);
                 int height;
                 int width;
