@@ -4,7 +4,8 @@
         "CustomBlocks.csproj",
         "CustomBlocks.csproj.user",
         "CustomBlocks.sln",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "todo.txt"
     ],
     "ignoreFolders": [
         ".vs",

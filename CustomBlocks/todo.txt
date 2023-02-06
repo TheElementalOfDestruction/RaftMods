@@ -1,0 +1,2 @@
+* Fix issue with editing textures that causes up and down to not be extended.
+* Fix issue with render textures seeming to not account for mip maps.

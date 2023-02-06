@@ -707,10 +707,14 @@ namespace DestinyCustomBlocks
          * Performs serveral tasks, including the textures, material, and the
          * sprite.
          */
-        private IEnumerator SetupBasicBlockData(BlockType bt)
+        private IEnumerator SetupBasicBlockData(BlockType bt, Material origMat = null)
         {
             string imgDir = FOLDER_NAMES[bt];
-            yield return this.AddBaseTextures(bt, this.GetOriginalMaterial(IDS[bt].Item1), $"{imgDir}/default.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
+            if (origMat == null)
+            {
+                origMat = this.GetOriginalMaterial(IDS[bt].Item1);
+            }
+            yield return this.AddBaseTextures(bt, origMat, $"{imgDir}/default.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
 
             // Setup the base material.
 
@@ -744,8 +748,19 @@ namespace DestinyCustomBlocks
             this.defaultMaterialsMipEnabled[bt] = mat.CreateMipMapEnabled(bt);
 
             byte[] def = null;
-            yield return GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt, x => def = x);
-            yield return CustomBlocks.CreateSpriteFromBytes(def, bt, x => this.defaultSprites[bt] = x);
+            Texture2D spriteTex = new Texture2D(1524, 1024);
+            if (spriteTex.LoadCachedTexture($"sprite_{bt}"))
+            {
+                Vector2 pivot = new Vector2(0.5f, 0.5f);
+                Rect rect = new Rect(0, 0, 1524, 1024);
+                this.defaultSprites[bt] = Sprite.Create(spriteTex, rect, pivot);
+            }
+            else
+            {
+                DestroyImmediate(spriteTex);
+                yield return GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt, x => def = x);
+                yield return CustomBlocks.CreateSpriteFromBytes(def, bt, x => this.defaultSprites[bt] = x, $"sprite_{bt}");
+            }
         }
 
         private IEnumerator SetupPosters()
@@ -767,16 +782,17 @@ namespace DestinyCustomBlocks
                 {
                     string imgDir = FOLDER_NAMES[bt];
                     var originalMat = pd.CreateMaterial();
-                    yield return this.AddBaseTextures(bt, originalMat, $"{imgDir}/transparent.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
+                    yield return this.SetupBasicBlockData(bt, originalMat);
+                    //yield return this.AddBaseTextures(bt, originalMat, $"{imgDir}/default.png", $"{imgDir}/normal.png", $"{imgDir}/transparent.png");
                     originalMat.FullDestroy();
 
-                    byte[] def = null;
-                    yield return GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt, x => def = x);
-                    Material mat = null;
-                    yield return CustomBlocks.CreateMaterialFromImageData(def, bt, x => mat = x);
-                    this.defaultMaterials[bt] = mat;
-                    this.defaultMaterialsMipEnabled[bt] = mat.CreateMipMapEnabled(bt);
-                    yield return CustomBlocks.CreateSpriteFromBytes(def, bt, x => this.defaultSprites[bt] = x);
+                    //byte[] def = null;
+                    //yield return GetEmbeddedFileBytes($"{imgDir}/default.png").SanitizeImage(bt, x => def = x);
+                    //Material mat = null;
+                    //yield return CustomBlocks.CreateMaterialFromImageData(def, bt, x => mat = x);
+                    //this.defaultMaterials[bt] = mat;
+                    //this.defaultMaterialsMipEnabled[bt] = mat.CreateMipMapEnabled(bt);
+                    //yield return CustomBlocks.CreateSpriteFromBytes(def, bt, x => this.defaultSprites[bt] = x);
                 }
                 try
                 {
@@ -829,7 +845,19 @@ namespace DestinyCustomBlocks
                 // Copy the original texture, paste out stuff into it, then
                 // cache it.
                 add[0] = originalMat.GetMainTexture().CreateReadable();
-                ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(texture));
+                if (LOCATIONS[bt].Item1 == -1)
+                {
+                    // For cut images, we *need* to resize for this step.
+                    Texture2D scaleTemp = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+                    scaleTemp.wrapMode = TextureWrapMode.Clamp;
+                    ImageConversion.LoadImage(scaleTemp, GetEmbeddedFileBytes(texture));
+                    insertTex.Edit(scaleTemp, 0, 0, SIZES[bt].Item1, SIZES[bt].Item2);
+                    DestroyImmediate(scaleTemp);
+                }
+                else
+                {
+                    ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(texture));
+                }
                 yield return CustomBlocks.PlaceImageInTexture(add[0], insertTex, bt);
                 add[0].CacheTexture(mainName);
             }
@@ -844,7 +872,19 @@ namespace DestinyCustomBlocks
                     DestroyImmediate(add[1]);
 
                     add[1] = originalMat.GetNormalTexture().CreateReadable();
-                    ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(normal));
+                    if (LOCATIONS[bt].Item1 == -1)
+                    {
+                        // For cut images, we *need* to resize for this step.
+                        Texture2D scaleTemp = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+                        scaleTemp.wrapMode = TextureWrapMode.Clamp;
+                        ImageConversion.LoadImage(scaleTemp, GetEmbeddedFileBytes(normal));
+                        insertTex.Edit(scaleTemp, 0, 0, SIZES[bt].Item1, SIZES[bt].Item2);
+                        DestroyImmediate(scaleTemp);
+                    }
+                    else
+                    {
+                        ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(normal));
+                    }
                     yield return CustomBlocks.PlaceImageInTexture(add[1], insertTex, bt, true, normalName);
                 }
             }
@@ -864,7 +904,19 @@ namespace DestinyCustomBlocks
                 DestroyImmediate(add[2]);
 
                 add[2] = originalMat.GetPaintTexture().CreateReadable();
-                ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(paint));
+                if (LOCATIONS[bt].Item1 == -1)
+                {
+                    // For cut images, we *need* to resize for this step.
+                    Texture2D scaleTemp = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+                    scaleTemp.wrapMode = TextureWrapMode.Clamp;
+                    ImageConversion.LoadImage(scaleTemp, GetEmbeddedFileBytes(paint));
+                    insertTex.Edit(scaleTemp, 0, 0, SIZES[bt].Item1, SIZES[bt].Item2);
+                    DestroyImmediate(scaleTemp);
+                }
+                else
+                {
+                    ImageConversion.LoadImage(insertTex, GetEmbeddedFileBytes(paint));
+                }
                 yield return CustomBlocks.PlaceImageInTexture(add[2], insertTex, bt, true, paintName);
             }
 
@@ -904,7 +956,7 @@ namespace DestinyCustomBlocks
          * Uses the data to create a flag sprite. Returns null if flag is bad.
          * Returns the default sprite if the data is 0 bytes.
          */
-        public static IEnumerator CreateSpriteFromBytes(byte[] data, BlockType bt, Action<Sprite> callback)
+        public static IEnumerator CreateSpriteFromBytes(byte[] data, BlockType bt, Action<Sprite> callback, string cacheName = null)
         {
             if (data == null)
             {
@@ -921,7 +973,6 @@ namespace DestinyCustomBlocks
             Rect rect = new Rect(0, 0, 1524, 1024);
 
             Texture2D container = new Texture2D(1524, 1024);
-            var timer = new System.Diagnostics.Stopwatch();
             Texture2D imageTex = data.ToTexture2D(SIZES[bt].Item1, SIZES[bt].Item2);
 
             yield return new WaitForEndOfFrame();
@@ -930,6 +981,12 @@ namespace DestinyCustomBlocks
             yield return container.Edit(imageTex, newSize.Item1, newSize.Item2, newSize.Item3, newSize.Item4);
 
             yield return new WaitForEndOfFrame();
+
+            // If we need to cache it, do it here.
+            if (cacheName != null)
+            {
+                container.CacheTexture(cacheName);
+            }
 
             // Make the sprite texture no longer readable.
             container.Apply(true, true);
@@ -1573,10 +1630,12 @@ namespace DestinyCustomBlocks
          *     place the texture and what size it will be.
          * :param makeUnreadable: Sets the modified texture to no longer be
          *     readable after the operation, saving memory (default: false).
+         * :param cacheName: The name for the cache to save the modified texture
+         *     into.
          */
-        private static IEnumerator PlaceImageInMaterial(Material dest, Texture2D src, BlockType bt, bool makeUnreadable = false)
+        private static IEnumerator PlaceImageInMaterial(Material dest, Texture2D src, BlockType bt, bool makeUnreadable = false, string cacheName = null)
         {
-            yield return CustomBlocks.PlaceImageInTexture(dest.GetMainTexture(), src, bt, makeUnreadable);
+            yield return CustomBlocks.PlaceImageInTexture(dest.GetMainTexture(), src, bt, makeUnreadable, cacheName);
         }
 
         /*
@@ -1588,11 +1647,13 @@ namespace DestinyCustomBlocks
          *     place the texture and what size it will be.
          * :param makeUnreadable: Sets the modified texture to no longer be
          *     readable after the operation, saving memory.
+         * :param cacheName: The name for the cache to save the modified texture
+         *     into.
          */
         private static IEnumerator PlaceImageInTexture(Texture2D dest, Texture2D src, BlockType bt, bool makeUnreadable = false, string cacheName = null)
         {
             yield return null;
-            // A negative position means it's a split image.
+            // A negative position means it's a special edit.
             switch(LOCATIONS[bt].Item1)
             {
                 case -1:
