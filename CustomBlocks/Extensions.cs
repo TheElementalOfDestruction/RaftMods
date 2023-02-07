@@ -284,13 +284,13 @@ namespace DestinyCustomBlocks
                     pixels[x1i + yt] = pixels[xOffset + yt1];
                     pixels[xti + yti] = pixels[xt1 + yt1];
 
-                    for (int x = xOffset; x < xOffset + targetX; ++x)
+                    for (int x = xOffset - i; x < xOffset + targetX + i; ++x)
                     {
                         pixels[x + y1i] = pixels[x + yw];
                         pixels[x + yti] = pixels[x + yt1];
                     }
 
-                    for (int y = yOffset; y < yOffset + targetY; ++y)
+                    for (int y = yOffset - i; y < yOffset + targetY + i; ++y)
                     {
                         int yy = y * baseWidth;
                         pixels[x1i + yy] = pixels[xOffset + yy];
