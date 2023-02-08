@@ -269,30 +269,35 @@ namespace DestinyCustomBlocks
                     // and things get recalculated a lot, I'm storing a few of
                     // them here to try and save time.
                     var x1i = Math.Max(xOffset - (1 + i), 0);
-                    var xti = Math.Min(xOffset + targetX + i, baseImg.width - 1);
-                    var xt1 = Math.Min(xOffset + targetX - 1, baseImg.width - 1);
+                    var xti = Math.Min(xOffset + targetX + i, baseWidth - 1);
+                    var xt1 = Math.Min(xOffset + targetX - 1, baseWidth - 1);
 
                     var y1i = Math.Max((yOffset - (1 + i)) * baseWidth, 0);
-                    var yti = Math.Min((yOffset + targetY + i) * baseWidth, baseImg.height - 1);
-                    var yt1 = Math.Min((yOffset + targetY - 1) * baseWidth, baseImg.height - 1);
-                    var yw = Math.Min(yOffset * baseWidth, baseImg.height - 1);
-                    var yt = Math.Min((yOffset + targetY) * baseWidth, baseImg.height - 1);
+                    var yti = Math.Min(yOffset + targetY + i, baseImg.height - 1) * baseWidth;
+                    var yt1 = Math.Min(yOffset + targetY - 1, baseImg.height - 1) * baseWidth;
+                    var yw = Math.Min(yOffset, baseImg.height - 1) * baseWidth;
+                    var yt = Math.Min(yOffset + targetY, baseImg.height - 1) * baseWidth;
 
                     // Do the 4 corners.
+                    // Bottom left.
                     pixels[x1i + y1i] = pixels[xOffset + yw];
+                    // Bottom right.
                     pixels[xti + y1i] = pixels[xt1 + yw];
-                    pixels[x1i + yt] = pixels[xOffset + yt1];
+                    // Top left.
+                    pixels[x1i + yti] = pixels[xOffset + yt1];
+                    // Top right.
                     pixels[xti + yti] = pixels[xt1 + yt1];
 
                     for (int x = xOffset - i; x < xOffset + targetX + i; ++x)
                     {
-                        pixels[x + y1i] = pixels[x + yw];
-                        pixels[x + yti] = pixels[x + yt1];
+                        int xx = Math.Max(Math.Min(x, baseWidth - 1), 0);
+                        pixels[xx + y1i] = pixels[xx + yw];
+                        pixels[xx + yti] = pixels[xx + yt1];
                     }
 
                     for (int y = yOffset - i; y < yOffset + targetY + i; ++y)
                     {
-                        int yy = y * baseWidth;
+                        int yy = Math.Min(Math.Max(y, 0), baseImg.height - 1) * baseWidth;
                         pixels[x1i + yy] = pixels[xOffset + yy];
                         pixels[xti + yy] = pixels[xt1 + yy];
                     }
