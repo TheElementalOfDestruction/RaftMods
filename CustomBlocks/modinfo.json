@@ -38,7 +38,7 @@
         {
             "type": "checkbox",
             "name": "useMipMaps",
-            "Text": "Use Game Settings For Texture Quality",
+            "text": "Use Game Settings For Texture Quality",
             "default": true
         }
     ]

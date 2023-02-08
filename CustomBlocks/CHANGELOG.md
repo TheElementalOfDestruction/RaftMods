@@ -4,6 +4,7 @@
 * Fixed lag spikes that would happen on world load (it was worse the more blocks you had from this mod). Some spikes still happen, but they are better and for a better reason.
 * Changed internal code so that clients don't store the full image data all the time even though it only gets used once for them.
 * Started implementing caching to make load times after the first much faster.
+* Fixed issue that caused edges to look weird.
 
 **v3.2.0**
 * *Finally* fixed the issue causing sails and flags to not flap around as they should.
