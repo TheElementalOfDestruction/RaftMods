@@ -1,8 +1,8 @@
 **v4.0.0**
 * Dedicated server compatibility! You can now use this on dedicated servers with no issues (none that I could find, anyways).
 * Significantly reduced freezing for every operation.
-* Fixed lag spikes that would happen on world load (it was worse the more blocks you had from this mod). Some spikes still happen, but they are better and for a better reason.
-* Changed internal code so that clients don't store the full image data all the time even though it only gets used once for them.
+* Reduced lag spikes that would happen on world load.
+* Changed internal code so that clients don't store the full image data all the time.
 * Started implementing caching to make load times after the first much faster.
 * Fixed issue that caused edges to look weird.
 
