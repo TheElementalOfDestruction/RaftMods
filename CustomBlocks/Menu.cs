@@ -96,7 +96,6 @@ namespace DestinyCustomBlocks
 
         public void HideLoading()
         {
-            CustomBlocks.DebugLog("Hiding menu");
             this.loadingPopup.SetActive(false);
             this.inputField.readOnly = false;
         }
