@@ -1,3 +1,6 @@
+**v4.0.1**
+* Fixed a bug from the new code that could cause updates to be sent infinitely (this may cause game crashes in bad cases).
+
 **v4.0.0**
 * Dedicated server compatibility! You can now use this on dedicated servers with no issues (none that I could find, anyways).
 * Significantly reduced freezing for every operation.

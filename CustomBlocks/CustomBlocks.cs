@@ -1126,7 +1126,7 @@ namespace DestinyCustomBlocks
                         }
                     }
 
-                    StartCoroutine(cb.SetImageDataCo(new byte[0]));
+                    StartCoroutine(cb.SetImageDataCo(new byte[0], false));
                 }
             }
 
@@ -1205,7 +1205,7 @@ namespace DestinyCustomBlocks
                     nb.ReplaceValues(originalNb, nb);
                     DestroyImmediate(originalNb);
 
-                    StartCoroutine(cb.SetImageDataCo(new byte[0]));
+                    StartCoroutine(cb.SetImageDataCo(new byte[0], false));
                 }
             }
 
@@ -1298,7 +1298,7 @@ namespace DestinyCustomBlocks
 
                     filter.mesh = pd.CreateMesh();
 
-                    StartCoroutine(cb.SetImageDataCo(new byte[0]));
+                    StartCoroutine(cb.SetImageDataCo(new byte[0], false));
                 }
             }
 
@@ -1455,7 +1455,7 @@ namespace DestinyCustomBlocks
                     cf.networkedBehaviour = cf.gameObject.AddComponent<CustomBlock_Network>();
                     cf.networkType = NetworkType.NetworkBehaviour;
 
-                    StartCoroutine(cf.SetImageDataCo(new byte[0]));
+                    StartCoroutine(cf.SetImageDataCo(new byte[0], false));
                 }
             }
 
@@ -1570,7 +1570,7 @@ namespace DestinyCustomBlocks
                     sail.ReplaceValues(originalNb, sail);
                     DestroyImmediate(originalNb);
 
-                    StartCoroutine(cs.SetImageDataCo(new byte[0]));
+                    StartCoroutine(cs.SetImageDataCo(new byte[0], false));
                 }
             }
 

@@ -23,7 +23,7 @@ namespace DestinyCustomBlocks
          * Coroutine for setting image data. Typically used only for block
          * creation.
          */
-        IEnumerator SetImageDataCo(byte[] data);
+        IEnumerator SetImageDataCo(byte[] data, bool sendUpdates);
 
         /*
          * Retrieves the member of the BlockType enum that identifies this
@@ -60,7 +60,7 @@ namespace DestinyCustomBlocks
             this.ImageData = data;
         }
 
-        public IEnumerator SetImageDataCo(byte[] data)
+        public IEnumerator SetImageDataCo(byte[] data, bool sendUpdates)
         {
             object lockObj = null;
             if (this.coLock)
@@ -72,7 +72,7 @@ namespace DestinyCustomBlocks
             this.imageData = data;
             bool success = false;
 
-            yield return this.PatchRenderer(x => success = x);
+            yield return this.PatchRenderer(sendUpdates, x => success = x);
 
             // If we fail, reset the image data back to it's previous state.
             if (!success)
@@ -145,7 +145,7 @@ namespace DestinyCustomBlocks
                 {
                     return;
                 }
-                StartCoroutine(this.SetImageDataCo(value));
+                StartCoroutine(this.SetImageDataCo(value, this.sendUpdates));
             }
         }
 
@@ -169,7 +169,7 @@ namespace DestinyCustomBlocks
          * Attempt to load the new data into the renderer(s), returning whether
          * it succeeded.
          */
-        protected virtual IEnumerator PatchRenderer(Action<bool> callback)
+        protected virtual IEnumerator PatchRenderer(bool sendUpdates, Action<bool> callback)
         {
             // A null value is completely invalid.
             if (this.imageData == null)
@@ -241,7 +241,7 @@ namespace DestinyCustomBlocks
                 }
             }
             this.rendererPatched = true;
-            if (this.hasBeenPlaced && this.sendUpdates)
+            if (this.hasBeenPlaced && sendUpdates)
             {
                 this.GetComponent<ICustomBlockNetwork>()?.BroadcastChange(this.imageData);
             }
@@ -324,7 +324,7 @@ namespace DestinyCustomBlocks
             this.ImageData = data;
         }
 
-        public IEnumerator SetImageDataCo(byte[] data)
+        public IEnumerator SetImageDataCo(byte[] data, bool sendUpdates)
         {
             object lockObj = null;
             if (this.coLock)
@@ -336,7 +336,7 @@ namespace DestinyCustomBlocks
             this.imageData = data;
             bool success = false;
 
-            yield return this.PatchRenderer(x => success = x);
+            yield return this.PatchRenderer(sendUpdates, x => success = x);
 
             // If we fail, reset the image data back to it's previous state.
             if (!success)
@@ -409,7 +409,7 @@ namespace DestinyCustomBlocks
                 {
                     return;
                 }
-                StartCoroutine(this.SetImageDataCo(value));
+                StartCoroutine(this.SetImageDataCo(value, this.sendUpdates));
             }
         }
 
@@ -433,7 +433,7 @@ namespace DestinyCustomBlocks
          * Attempt to load the new data into the renderer(s), returning whether
          * it succeeded.
          */
-        protected virtual IEnumerator PatchRenderer(Action<bool> callback)
+        protected virtual IEnumerator PatchRenderer(bool sendUpdates, Action<bool> callback)
         {
             // A null value is completely invalid.
             if (this.imageData == null)
@@ -505,7 +505,7 @@ namespace DestinyCustomBlocks
                 }
             }
             this.rendererPatched = true;
-            if (this.hasBeenPlaced && this.sendUpdates)
+            if (this.hasBeenPlaced && sendUpdates)
             {
                 this.GetComponent<ICustomBlockNetwork>()?.BroadcastChange(this.imageData);
             }
@@ -590,7 +590,7 @@ namespace DestinyCustomBlocks
             this.ImageData = data;
         }
 
-        public IEnumerator SetImageDataCo(byte[] data)
+        public IEnumerator SetImageDataCo(byte[] data, bool sendUpdates)
         {
             object lockObj = null;
             if (this.coLock)
@@ -602,7 +602,7 @@ namespace DestinyCustomBlocks
             this.imageData = data;
             bool success = false;
 
-            yield return this.PatchRenderer(x => success = x);
+            yield return this.PatchRenderer(sendUpdates, x => success = x);
 
             // If we fail, reset the image data back to it's previous state.
             if (!success)
@@ -681,7 +681,7 @@ namespace DestinyCustomBlocks
                 {
                     return;
                 }
-                StartCoroutine(this.SetImageDataCo(value));
+                StartCoroutine(this.SetImageDataCo(value, this.sendUpdates));
             }
         }
 
@@ -705,7 +705,7 @@ namespace DestinyCustomBlocks
          * Attempt to load the new data into the renderer(s), returning whether
          * it succeeded.
          */
-        protected virtual IEnumerator PatchRenderer(Action<bool> callback)
+        protected virtual IEnumerator PatchRenderer(bool sendUpdates, Action<bool> callback)
         {
             // A null value is completely invalid.
             if (this.imageData == null)
@@ -777,7 +777,7 @@ namespace DestinyCustomBlocks
                 }
             }
             this.rendererPatched = true;
-            if (this.hasBeenPlaced && this.sendUpdates)
+            if (this.hasBeenPlaced && sendUpdates)
             {
                 this.GetComponent<ICustomBlockNetwork>()?.BroadcastChange(this.imageData);
             }
