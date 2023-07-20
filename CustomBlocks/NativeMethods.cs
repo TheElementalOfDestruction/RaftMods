@@ -18,7 +18,7 @@ namespace DestinyCustomBlocks
             ofn.maxFile = ofn.file.Length;
             ofn.fileTitle = new string(new char[64]);
             ofn.maxFileTitle = ofn.fileTitle.Length;
-            ofn.initialDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            ofn.initialDir = CustomBlocksMenu.RESOURCE_LOCATION;
             ofn.title = title;
             ofn.defExt = "PNG";
             ofn.flags = 0x00080000 | 0x00001000 | 0x00000800 | 0x00000008;//OFN_EXPLORER|OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_NOCHANGEDIR

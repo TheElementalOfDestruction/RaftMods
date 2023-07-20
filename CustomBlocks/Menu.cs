@@ -11,7 +11,7 @@ namespace DestinyCustomBlocks
     public class CustomBlocksMenu : MonoBehaviour
     {
         private static readonly string MOD_DATA_FOLDER = Path.Combine(HMLLibrary.HLib.path_modsFolder, "ModData");
-        private static readonly string RESOURCE_LOCATION = Path.Combine(MOD_DATA_FOLDER, "CustomBlocks");
+        public static readonly string RESOURCE_LOCATION = Path.Combine(MOD_DATA_FOLDER, "CustomBlocks");
 
         private CanvasGroup cg;
         private UnityEngine.UI.Image preview;
