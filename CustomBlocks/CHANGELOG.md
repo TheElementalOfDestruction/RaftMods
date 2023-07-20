@@ -1,3 +1,7 @@
+**v4.0.2**
+* Fixed a bug that would make it so that non-hosts couldn't properly use the block editor. This also means that you'll get a tiny bit more lag when changing the block, but you won't have to wait for the texture to load into the editor anymore.
+* Added a new button, `...`, which will bring up a file explorer menu to select an image.
+
 **v4.0.1**
 * Fixed a bug from the new code that could cause updates to be sent infinitely (this may cause game crashes in bad cases).
 

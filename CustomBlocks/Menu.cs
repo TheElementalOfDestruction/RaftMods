@@ -1,6 +1,7 @@
 using System.Collections;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -19,7 +20,9 @@ namespace DestinyCustomBlocks
         private byte[] imageData;
         private bool shown;
         private Coroutine spriteLoader = null;
+        private Coroutine fileRequest = null;
         private GameObject loadingPopup;
+        private bool spriteOwner = false;
 
         void Start()
         {
@@ -41,6 +44,10 @@ namespace DestinyCustomBlocks
                 else if (button.gameObject.name.StartsWith("UpdateButton"))
                 {
                     button.onClick.AddListener(this.UpdateBlock);
+                }
+                else if (button.gameObject.name.StartsWith("ExplorerButton"))
+                {
+                    button.onClick.AddListener(this.RequestFileStart);
                 }
                 else
                 {
@@ -165,7 +172,7 @@ namespace DestinyCustomBlocks
                 else
                 {
                     // Success!
-                    if (this.imageData.Length != 0)
+                    if (this.imageData.Length != 0 && this.spriteOwner)
                     {
                         // If we had image data before, cleanup the old sprite.
                         DestroyImmediate(this.preview.overrideSprite.texture);
@@ -173,6 +180,7 @@ namespace DestinyCustomBlocks
                     }
                     yield return handler.data.SanitizeImage(this.currentBlock.GetBlockType(), x => this.imageData = x);
                     yield return CustomBlocks.CreateSpriteFromBytes(this.imageData, this.currentBlock.GetBlockType(), x => this.preview.overrideSprite = x);
+                    this.spriteOwner = this.imageData.Length > 0;
                 }
             }
             else
@@ -200,7 +208,7 @@ namespace DestinyCustomBlocks
                     }
                     else
                     {
-                        if (this.imageData.Length != 0)
+                        if (this.imageData.Length != 0 && this.spriteOwner)
                         {
                             // If we had image data before, cleanup the old sprite.
                             DestroyImmediate(this.preview.overrideSprite.texture);
@@ -208,6 +216,7 @@ namespace DestinyCustomBlocks
                         }
                         this.imageData = temp2;
                         this.preview.overrideSprite = s;
+                        this.spriteOwner = this.imageData.Length > 0;
                     }
                 }
                 else
@@ -225,6 +234,41 @@ namespace DestinyCustomBlocks
             if (this.spriteLoader == null)
             {
                 this.spriteLoader = StartCoroutine(this.LoadPreview());
+            }
+        }
+
+        // Thanks for the help with this, Aidan.
+        IEnumerator RequestFile()
+        {
+            string title = "Select an Image File...";
+            string result = null;
+            Thread t = null;
+            t = new Thread(() =>
+            {
+                if (!NativeMethods.OpenFileDialog(title, out result))
+                    result = "";
+            });
+            t.IsBackground = true;
+            t.Start();
+            while (result == null && t.IsAlive)
+            {
+                yield return null;
+            }
+            if (!string.IsNullOrEmpty(result))
+            {
+                this.inputField.text = result;
+                this.LoadPreviewStart();
+            }
+
+            this.fileRequest = null;
+            yield break;
+        }
+
+        public void RequestFileStart()
+        {
+            if (this.fileRequest == null)
+            {
+                this.fileRequest = StartCoroutine(this.RequestFile());
             }
         }
 
@@ -253,12 +297,7 @@ namespace DestinyCustomBlocks
                 this.cg.blocksRaycasts = true;
                 this.shown = true;
                 this.currentBlock = cb;
-                if (this.imageData != null && this.imageData.Length != 0)
-                {
-                    // If we had image data before, cleanup the old sprite.
-                    DestroyImmediate(this.preview.overrideSprite.texture);
-                    DestroyImmediate(this.preview.overrideSprite);
-                }
+                this.spriteOwner = false;
                 this.imageData = cb.GetImageData();
                 this.inputField.readOnly = false;
                 RAPI.ToggleCursor(true);
@@ -268,9 +307,7 @@ namespace DestinyCustomBlocks
                 Debug.LogError(e);
                 yield break;
             }
-            this.ShowLoading();
-            yield return CustomBlocks.CreateSpriteFromBytes(this.imageData, cb.GetBlockType(), x => this.preview.overrideSprite = x);
-            this.HideLoading();
+            this.preview.overrideSprite = cb.GetSprite();
         }
 
         public void UpdateBlock()

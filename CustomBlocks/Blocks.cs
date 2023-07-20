@@ -8,6 +8,12 @@ namespace DestinyCustomBlocks
     public interface ICustomBlock
     {
         /*
+         * Retrieves the member of the BlockType enum that identifies this
+         * class.
+         */
+        BlockType GetBlockType();
+
+        /*
          * Get the color array that will make up the custom image in the
          * texture.
          */
@@ -26,15 +32,14 @@ namespace DestinyCustomBlocks
         IEnumerator SetImageDataCo(byte[] data, bool sendUpdates);
 
         /*
-         * Retrieves the member of the BlockType enum that identifies this
-         * class.
-         */
-        BlockType GetBlockType();
-
-        /*
          * Tells the block whether it should be broadcasting updates at all.
          */
         void SetSendUpdates(bool state);
+
+        /*
+         * Gets the sprite to use for the current texture in the block editor.
+         */
+        Sprite GetSprite();
 
         /*
          * Tells the block to switch the quality for the current custom image.
@@ -96,6 +101,11 @@ namespace DestinyCustomBlocks
             this.sendUpdates = state;
         }
 
+        Sprite ICustomBlock.GetSprite()
+        {
+            return this.sprite;
+        }
+
         void ICustomBlock.SwitchMipMapState(bool state)
         {
             if (this.occupyingComponent)
@@ -115,6 +125,8 @@ namespace DestinyCustomBlocks
         [SerializeField]
         protected bool rendererPatched = false;
         protected bool showingText;
+        [SerializeField]
+        protected Sprite sprite;
         [SerializeField]
         protected Material fullResolutionMat;
         [SerializeField]
@@ -161,6 +173,7 @@ namespace DestinyCustomBlocks
                 {
                     this.autoResolutionMat = CustomBlocks.instance.defaultMaterialsMipEnabled[this.CustomBlockType];
                     this.fullResolutionMat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+                    this.sprite = CustomBlocks.instance.defaultSprites[this.CustomBlockType];
                 }
             }
         }
@@ -245,6 +258,17 @@ namespace DestinyCustomBlocks
             {
                 this.GetComponent<ICustomBlockNetwork>()?.BroadcastChange(this.imageData);
             }
+
+            // See if we need to cleanup the old sprite.
+            if (this.sprite != null && this.sprite != CustomBlocks.instance.defaultSprites[this.CustomBlockType])
+            {
+                DestroyImmediate(this.sprite.texture);
+                DestroyImmediate(this.sprite);
+            }
+
+            // Before we trash any data we might have, we need to create our
+            // sprite.
+            yield return CustomBlocks.CreateSpriteFromBytes(this.imageData, this.CustomBlockType, x => this.sprite = x);
 
             if (!Raft_Network.IsHost && this.imageData.Length > 0)
             {
@@ -360,6 +384,11 @@ namespace DestinyCustomBlocks
             this.sendUpdates = state;
         }
 
+        Sprite ICustomBlock.GetSprite()
+        {
+            return this.sprite;
+        }
+
         void ICustomBlock.SwitchMipMapState(bool state)
         {
             if (this.occupyingComponent)
@@ -379,6 +408,7 @@ namespace DestinyCustomBlocks
         [SerializeField]
         protected bool rendererPatched = false;
         protected bool showingText;
+        protected Sprite sprite;
         [SerializeField]
         protected Material fullResolutionMat;
         [SerializeField]
@@ -425,6 +455,7 @@ namespace DestinyCustomBlocks
                 {
                     this.autoResolutionMat = CustomBlocks.instance.defaultMaterialsMipEnabled[this.CustomBlockType];
                     this.fullResolutionMat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+                    this.sprite = CustomBlocks.instance.defaultSprites[this.CustomBlockType];
                 }
             }
         }
@@ -509,6 +540,17 @@ namespace DestinyCustomBlocks
             {
                 this.GetComponent<ICustomBlockNetwork>()?.BroadcastChange(this.imageData);
             }
+
+            // See if we need to cleanup the old sprite.
+            if (this.sprite != null && this.sprite != CustomBlocks.instance.defaultSprites[this.CustomBlockType])
+            {
+                DestroyImmediate(this.sprite.texture);
+                DestroyImmediate(this.sprite);
+            }
+
+            // Before we trash any data we might have, we need to create our
+            // sprite.
+            yield return CustomBlocks.CreateSpriteFromBytes(this.imageData, this.CustomBlockType, x => this.sprite = x);
 
             if (!Raft_Network.IsHost && this.imageData.Length > 0)
             {
@@ -626,6 +668,11 @@ namespace DestinyCustomBlocks
             this.sendUpdates = state;
         }
 
+        Sprite ICustomBlock.GetSprite()
+        {
+            return this.sprite;
+        }
+
         void ICustomBlock.SwitchMipMapState(bool state)
         {
             if (this.occupyingComponent)
@@ -645,6 +692,7 @@ namespace DestinyCustomBlocks
         [SerializeField]
         protected bool rendererPatched = false;
         protected bool showingText;
+        protected Sprite sprite;
         [SerializeField]
         protected Material fullResolutionMat;
         [SerializeField]
@@ -697,6 +745,7 @@ namespace DestinyCustomBlocks
                 {
                     this.autoResolutionMat = CustomBlocks.instance.defaultMaterialsMipEnabled[this.CustomBlockType];
                     this.fullResolutionMat = CustomBlocks.instance.defaultMaterials[this.CustomBlockType];
+                    this.sprite = CustomBlocks.instance.defaultSprites[this.CustomBlockType];
                 }
             }
         }
@@ -781,6 +830,17 @@ namespace DestinyCustomBlocks
             {
                 this.GetComponent<ICustomBlockNetwork>()?.BroadcastChange(this.imageData);
             }
+
+            // See if we need to cleanup the old sprite.
+            if (this.sprite != null && this.sprite != CustomBlocks.instance.defaultSprites[this.CustomBlockType])
+            {
+                DestroyImmediate(this.sprite.texture);
+                DestroyImmediate(this.sprite);
+            }
+
+            // Before we trash any data we might have, we need to create our
+            // sprite.
+            yield return CustomBlocks.CreateSpriteFromBytes(this.imageData, this.CustomBlockType, x => this.sprite = x);
 
             if (!Raft_Network.IsHost && this.imageData.Length > 0)
             {
