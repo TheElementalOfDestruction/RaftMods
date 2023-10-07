@@ -1,3 +1,6 @@
 {
-    "slug": "bedtime"
+    "slug": "bedtime",
+    "ignoreFiles": [
+        "CHANGELOG.md"
+    ]
 }

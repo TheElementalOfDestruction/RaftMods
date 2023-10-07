@@ -25,7 +25,7 @@ namespace DestinyBedTime
             private set
             {
                 BedTime.instance.bedSetting = value;
-                BedTime.instance.ExtraSettingsAPI_SetComboboxSelectedIndex("bedSetting", value);
+                BedTime.instance.ExtraSettingsAPI_SetComboboxSelectedIndex("bedSetting", (int)value);
                 BedTime.Log($"Set sleep type to {value}");
             }
         }
@@ -35,6 +35,13 @@ namespace DestinyBedTime
             BedTime.instance = this;
             this.harmony = new Harmony("com.destruction.BedTime");
             this.harmony.PatchAll(Assembly.GetExecutingAssembly());
+            if (RAPI.IsDedicatedServer())
+            {
+                BedTime.Log("Dedicated server detected. Activating additional patch.");
+                var method = AccessTools.Method("RaftDedicatedServer.HarmonyPatches+HarmonyPatch_PlayerSleep:Prefix");
+                var prefix = new HarmonyMethod(AccessTools.Method(typeof(BedTime_Patch_DedicatedServer), "Prefix"));
+                this.harmony.Patch(method, prefix);
+            }
 
             BedTime.Log("Mod has been loaded.");
         }
@@ -73,7 +80,7 @@ namespace DestinyBedTime
         }
 
         [ConsoleCommand(name: "SetBedTimeHalf", docs: "Sets the player requirement for the BedTime mode to half of the players.")]
-        public static void SetBedTimeFull()
+        public static void SetBedTimeHalf()
         {
             BedTime.BedTimeSetting = BedTimeSetting.HALF;
         }
@@ -108,7 +115,7 @@ namespace DestinyBedTime
                 case BedTimeSetting.FULL:
                     return true;
                 case BedTimeSetting.HALF:
-                    count = dict.Count / 2;
+                    count = (dict.Count - (RAPI.IsDedicatedServer() ? 1 : 0)) / 2;
                     break;
             }
 
@@ -165,6 +172,23 @@ namespace DestinyBedTime
 
         private static IEnumerator test() {
             yield break;
+        }
+    }
+
+    // Patch to be compaitible with dedicated servers.
+    public class BedTime_Patch_DedicatedServer
+    {
+        public static bool Prefix(ref bool __result)
+        {
+            if (BedTime.BedTimeSetting == BedTimeSetting.FULL)
+            {
+                return true;
+            }
+            else
+            {
+                __result = true;
+                return false;
+            }
         }
     }
 }
