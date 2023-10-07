@@ -1,0 +1,22 @@
+{
+    "name": "Bed Time",
+    "author": "Destruction",
+    "description": "Allows night to pass without all players sleeping.",
+    "version": "1.0.0",
+    "license": "GNU AGPLv3",
+    "icon": "icon.png",
+    "banner": "banner.png",
+    "gameVersion": "1.0",
+    "updateUrl": "https://www.raftmodding.com/api/v1/mods/bedtime/version.txt",
+    "isModPermanent": false,
+    "excludedFiles": [],
+    "modSettings": [
+        {
+            "type": "combobox",
+            "name": "bedSetting",
+            "text": "Players needed sleeping to skip night",
+            "default": "Full",
+            "values": [ "Full", "Half", "Single" ]
+        }
+    ]
+}
