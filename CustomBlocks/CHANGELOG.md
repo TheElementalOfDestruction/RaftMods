@@ -1,3 +1,6 @@
+**v4.0.3**
+* Fixed issues with dedicated servers.
+
 **v4.0.2**
 * Fixed a bug that would make it so that non-hosts couldn't properly use the block editor. This also means that you'll get a tiny bit more lag when changing the block, but you won't have to wait for the texture to load into the editor anymore.
 * Added a new button, `...`, which will bring up a file explorer menu to select an image (thank you to Aidanamite for the original code).

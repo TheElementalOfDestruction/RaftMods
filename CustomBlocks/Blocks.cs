@@ -190,6 +190,7 @@ namespace DestinyCustomBlocks
                 callback(false);
                 yield break;
             }
+            //CustomBlocks.DebugLog($"Got length of {this.imageData.Length}.");
 
             if(!RAPI.IsDedicatedServer())
             {
@@ -248,6 +249,7 @@ namespace DestinyCustomBlocks
                     size *= CustomBlocks.SIZES[this.CustomBlockType].Item2 * 4;
                     if (this.imageData.Length != size)
                     {
+                        CustomBlocks.Log($"[WARNING] Unxpected image length for block. Expected {size}, but got {this.imageData.Length}.");
                         callback(false);
                         yield break;
                     }
@@ -472,6 +474,7 @@ namespace DestinyCustomBlocks
                 callback(false);
                 yield break;
             }
+            //CustomBlocks.DebugLog($"Got length of {this.imageData.Length}.");
 
             if(!RAPI.IsDedicatedServer())
             {
@@ -530,6 +533,7 @@ namespace DestinyCustomBlocks
                     size *= CustomBlocks.SIZES[this.CustomBlockType].Item2 * 4;
                     if (this.imageData.Length != size)
                     {
+                        CustomBlocks.Log($"[WARNING] Unxpected image length for block. Expected {size}, but got {this.imageData.Length}.");
                         callback(false);
                         yield break;
                     }
@@ -762,6 +766,7 @@ namespace DestinyCustomBlocks
                 callback(false);
                 yield break;
             }
+            //CustomBlocks.DebugLog($"Got length of {this.imageData.Length}.");
 
             if(!RAPI.IsDedicatedServer())
             {
@@ -820,6 +825,7 @@ namespace DestinyCustomBlocks
                     size *= CustomBlocks.SIZES[this.CustomBlockType].Item2 * 4;
                     if (this.imageData.Length != size)
                     {
+                        CustomBlocks.Log($"[WARNING] Unxpected image length for block. Expected {size}, but got {this.imageData.Length}.");
                         callback(false);
                         yield break;
                     }

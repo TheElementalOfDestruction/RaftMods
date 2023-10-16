@@ -922,6 +922,10 @@ namespace DestinyCustomBlocks
          */
         public static IEnumerator CreateSpriteFromBytes(byte[] data, BlockType bt, Action<Sprite> callback, string cacheName = null)
         {
+            if (RAPI.IsDedicatedServer())
+            {
+                yield break;
+            }
             if (data == null)
             {
                 callback(null);
